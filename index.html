@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Site Visit Scheduler</title>
+<meta name="description" content="An interactive weekly planner for scheduling field visits across Metro Manila — traffic-aware travel times, vehicle-coding awareness, and drag-and-drop or tap-to-move scheduling. Built with Claude.">
+<meta name="theme-color" content="#0f1117">
+<meta property="og:title" content="Site Visit Scheduler">
+<meta property="og:description" content="A weekly field-visit planner for Metro Manila: traffic-aware routing, number-coding awareness, and a drag-and-drop board. No backend — runs entirely in the browser.">
+<meta property="og:type" content="website">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#0f1117;--sur:#181c27;--s2:#1e2333;--bdr:#2a2f42;
+  --txt:#e8eaf2;--muted:#6b7394;
+  --ok:#4ade80;--warn:#fbbf24;--danger:#f87171;--acc:#7c3aed;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);padding:18px;}
+
+/* ── HEADER (sticky) ── */
+.hdr{position:sticky;top:0;z-index:900;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;background:var(--bg);margin:-18px -18px 12px;padding:14px 18px;border-bottom:1px solid var(--bdr);box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.hdr h1{font-size:18px;font-weight:700;letter-spacing:-.4px;}
+.hdr p{font-size:11px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace;}
+.btn-group{display:flex;gap:7px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--bdr);color:var(--txt);padding:7px 13px;border-radius:7px;font-size:11.5px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap;}
+.btn:hover{background:var(--bdr);}
+.btn-add{background:#1a0a33;border-color:#4c1d95;color:#c4b5fd;}
+.btn-add:hover{background:#2d1760;}
+.btn-data{background:#06231f;border-color:#0a4c47;color:#5eead4;}
+.btn-data:hover{background:#0a3a33;}
+
+/* ── CONTROLS ── */
+.controls{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.week-nav{display:flex;align-items:center;gap:8px;background:var(--sur);border:1px solid var(--bdr);border-radius:9px;padding:5px 8px;}
+.wk-arrow{background:var(--s2);border:1px solid var(--bdr);color:var(--txt);width:30px;height:30px;border-radius:6px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:background .12s;flex-shrink:0;}
+.wk-arrow:hover{background:var(--acc);border-color:var(--acc);}
+.wk-center{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:185px;}
+.wk-label{font-size:12.5px;font-weight:700;letter-spacing:-.2px;text-align:center;}
+.wk-picker{background:var(--s2);border:1px solid var(--bdr);color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;border-radius:5px;padding:2px 6px;cursor:pointer;color-scheme:dark;}
+.traffic-ctl{display:flex;align-items:center;gap:8px;background:var(--sur);border:1px solid var(--bdr);border-radius:9px;padding:8px 13px;cursor:pointer;user-select:none;transition:border-color .12s;}
+.traffic-ctl:hover{border-color:var(--acc);}
+.traffic-ico{font-size:14px;}
+.traffic-txt{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;}
+.traffic-txt b{color:var(--ok);}
+.switch{width:34px;height:18px;border-radius:10px;background:#14532d;border:1px solid #1f7a45;position:relative;transition:background .15s,border-color .15s;flex-shrink:0;}
+.switch .knob{position:absolute;top:1px;left:17px;width:14px;height:14px;border-radius:50%;background:#4ade80;transition:left .15s,background .15s;}
+.switch.off{background:#3a2a05;border-color:#6b4d0a;}
+.switch.off .knob{left:1px;background:#fbbf24;}
+
+/* ── DAY FILTER ── */
+.day-filter{display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap;background:var(--sur);border:1px solid var(--bdr);border-radius:9px;padding:8px 11px;}
+.df-label{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;margin-right:3px;}
+.df-chip{font-size:11.5px;font-weight:600;font-family:'DM Mono',monospace;padding:5px 11px;border-radius:14px;border:1px solid var(--bdr);background:var(--s2);color:var(--muted);cursor:pointer;transition:all .13s;user-select:none;}
+.df-chip.on{background:var(--acc);border-color:var(--acc);color:#fff;}
+.df-chip:hover{border-color:var(--acc);}
+.df-spacer{flex:1;}
+.df-preset{font-size:10.5px;font-family:'DM Mono',monospace;color:var(--muted);background:none;border:1px solid var(--bdr);border-radius:6px;padding:4px 9px;cursor:pointer;transition:all .13s;}
+.df-preset:hover{border-color:var(--acc);color:var(--txt);}
+
+/* ── BOARD ── */
+.board-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;padding-bottom:4px;}
+.board{display:grid;gap:12px;align-items:start;}
+
+/* ── DAY COLUMN ── */
+.day-col{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;overflow:hidden;transition:border-color .15s;min-width:0;}
+.day-col.drag-over{border-color:rgba(124,58,237,.7);background:#100f1e;}
+.day-col.move-target{border-color:rgba(124,58,237,.6);box-shadow:0 0 0 2px rgba(124,58,237,.25) inset;}
+.col-hdr{padding:11px 13px;border-bottom:1px solid var(--bdr);}
+.col-title-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:6px;}
+.col-day-name{font-size:14px;font-weight:700;}
+.col-day-date{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:1px;}
+.col-coding{font-size:9.5px;color:var(--warn);font-family:'DM Mono',monospace;margin-top:3px;}
+.col-coding.free{color:var(--ok);}
+.col-route{font-size:9.5px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.slot-badge{font-size:11px;font-weight:700;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:10px;background:var(--s2);border:1px solid var(--bdr);color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.slot-badge.near{background:#2d1b00;color:var(--warn);border-color:#5a3800;}
+.slot-badge.full{background:#2a0606;color:var(--danger);border-color:#5a0f0f;}
+.slot-badge.over{background:#450101;color:#ff4444;border-color:#7a0000;}
+.col-body{padding:8px;min-height:70px;}
+.empty-slot{text-align:center;padding:24px 12px;color:var(--bdr);font-size:11px;border:2px dashed var(--bdr);border-radius:8px;margin-top:4px;}
+
+/* ── TIMELINE ── */
+.tl-dep,.tl-ret{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;padding:3px 2px;display:flex;align-items:center;gap:4px;}
+.tl-ret.ok{color:var(--ok);}
+.tl-ret.late{color:var(--danger);}
+.tl-arr{display:flex;align-items:center;margin:1px 0 1px 8px;gap:6px;}
+.tl-ln{width:1px;height:14px;background:var(--bdr);}
+.tl-tr{font-size:9px;color:#4a5580;font-family:'DM Mono',monospace;}
+
+/* ── CARD ── */
+.card{background:var(--s2);border:1px solid var(--bdr);border-radius:7px;padding:9px 10px;margin:4px 0;cursor:grab;transition:border-color .12s,box-shadow .12s,opacity .15s;user-select:none;position:relative;}
+.card:hover{border-color:rgba(124,58,237,.4);box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.card:hover .card-actions{opacity:1;}
+.card.dragging{opacity:.3;cursor:grabbing;}
+.card.flagged{border-color:rgba(248,113,113,.35);}
+.card.move-picked{box-shadow:0 0 0 2px var(--acc);border-color:var(--acc);}
+.stop-num{width:16px;height:16px;border-radius:50%;background:var(--bdr);color:var(--muted);font-size:9px;font-weight:800;font-family:'DM Mono',monospace;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-right:2px;}
+.card-name{font-size:12.5px;font-weight:600;line-height:1.5;color:#fff;margin-bottom:5px;padding-right:56px;}
+.card-name .pri-star{color:#f5b301;font-size:11px;}
+.card-addr{font-size:10px;color:var(--muted);margin-bottom:5px;line-height:1.35;}
+/* city tag pinned to the top-right corner; hidden on hover so action buttons take the spot */
+.card-city{position:absolute;top:7px;right:8px;transition:opacity .15s;}
+.card:hover .card-city{opacity:0;pointer-events:none;}
+.card-footer{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.card-date{font-size:9.5px;color:var(--muted);font-family:'DM Mono',monospace;}
+.card-flags{display:flex;gap:3px;flex-wrap:wrap;}
+.card-timing{margin-top:5px;font-size:9.5px;font-family:'DM Mono',monospace;color:#3d4870;padding:3px 6px;background:rgba(255,255,255,.03);border-radius:4px;}
+.card-notes{margin-top:3px;font-size:10px;color:#7a6a80;font-style:italic;}
+.card-warn{margin-top:4px;font-size:9.5px;color:var(--danger);font-weight:500;}
+
+/* card action buttons — hidden until hover (priority included; fixes always-visible bug) */
+.card-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .15s;}
+.card-edit,.card-del,.card-star{width:20px;height:20px;border-radius:4px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .1s;line-height:1;padding:0;}
+.card-star{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.28);color:#facc15;}
+.card-star:hover{background:rgba(251,191,36,.28);}
+.card-star.on{background:rgba(251,191,36,.22);color:#fde047;}
+.card-edit{background:rgba(124,58,237,.14);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;}
+.card-edit:hover{background:rgba(124,58,237,.32);}
+.card-del{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.25);color:#f87171;font-size:13px;padding-bottom:1px;}
+.card-del:hover{background:rgba(248,113,113,.3);}
+/* priority: gold accent + star by name, but actions still hover-only */
+.card.priority{border-left:3px solid #f5b301;background:linear-gradient(90deg,rgba(245,179,1,.07),var(--s2) 40%);}
+.pri-star{color:#f5b301;font-size:11px;}
+
+/* ── BADGES ── */
+.badge{font-size:9px;font-weight:700;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:4px;white-space:nowrap;}
+.b-qc {background:#1e1233;color:#a78bfa;border:1px solid #3b1d72;}
+.b-cal{background:#061733;color:#60a5fa;border:1px solid #0f2f6b;}
+.b-psg{background:#042934;color:#22d3ee;border:1px solid #0e4a57;}
+.b-pat{background:#2c1205;color:#fb923c;border:1px solid #5a2208;}
+.b-sj {background:#052012;color:#4ade80;border:1px solid #0b4021;}
+.b-bul{background:#2d1b00;color:#fbbf24;border:1px solid #6b3900;}
+.b-mnl{background:#2d1900;color:#f59e0b;border:1px solid #6b3c00;}
+.b-mak{background:#022624;color:#2dd4bf;border:1px solid #0a4c47;}
+.b-tag{background:#022c1c;color:#34d399;border:1px solid #085c3a;}
+.b-par{background:#1a2d00;color:#a3e635;border:1px solid #3d5e00;}
+.b-mnd{background:#0f0e2e;color:#818cf8;border:1px solid #1e1b64;}
+.b-mrk{background:#051e2c;color:#38bdf8;border:1px solid #0e4060;}
+.b-pas{background:#2c0510;color:#fb7185;border:1px solid #5a0a20;}
+.b-lp {background:#1c1a00;color:#fde68a;border:1px solid #5a4e00;}
+.b-mnt{background:#0a0a28;color:#a5b4fc;border:1px solid #1e1b6a;}
+.b-val{background:#130828;color:#d8b4fe;border:1px solid #3b1d6b;}
+.b-mlb{background:#28040c;color:#fda4af;border:1px solid #6b0f20;}
+.b-nav{background:#041428;color:#7dd3fc;border:1px solid #0e3a6b;}
+.b-oth{background:#1a1a2e;color:#8892b0;border:1px solid #2d3561;}
+
+/* ── FLAGS ── */
+.flag{font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap;}
+.f-fixed{background:#1e3a8a;color:#93c5fd;}
+.f-amonly{background:#1e3a8a;color:#bfdbfe;}
+.f-new{background:#14532d;color:#4ade80;}
+.f-danger{background:#450a0a;color:#fca5a5;}
+.f-warn{background:#451a03;color:#fdba74;}
+.f-user{background:#1a0a33;color:#c4b5fd;}
+
+/* ── DROP LINE ── */
+.drop-line{height:2px;background:var(--acc);border-radius:1px;margin:2px 0;pointer-events:none;}
+
+/* ── BACKLOG ── */
+.backlog-sec{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;}
+.backlog-sec.move-target{border-color:rgba(124,58,237,.6);box-shadow:0 0 0 2px rgba(124,58,237,.25) inset;}
+.bl-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.bl-title{font-size:12px;font-weight:700;}
+.bl-sub{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.bl-count{font-size:10px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:10px;background:var(--s2);border:1px solid var(--bdr);color:var(--muted);}
+.bl-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;min-height:70px;align-items:start;}
+.bl-strip .card{min-width:0;max-width:none;}
+.bl-empty{grid-column:1/-1;display:flex;align-items:center;justify-content:center;width:100%;color:var(--ok);font-size:11px;padding:22px;font-family:'DM Mono',monospace;}
+@media (max-width:1000px){ .bl-strip{grid-template-columns:repeat(2,1fr);} }
+
+/* ── MOVE-MODE HINT BAR ── */
+.move-hint{position:fixed;top:0;left:0;right:0;background:var(--acc);color:#fff;text-align:center;padding:9px;font-size:12.5px;font-weight:600;z-index:1500;display:none;box-shadow:0 2px 12px rgba(0,0,0,.4);}
+.move-hint.show{display:block;}
+.move-hint button{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;padding:3px 10px;margin-left:10px;cursor:pointer;font-size:11px;}
+
+/* ── SELECT MODE ── */
+.btn-select{background:#0a1f33;border-color:#0e3a5a;color:#7dd3fc;}
+.btn-select:hover{background:#0e3047;}
+.btn-select.active{background:#0ea5e9;border-color:#0ea5e9;color:#fff;}
+/* selectable card affordance */
+body.select-mode .card{cursor:pointer;}
+body.select-mode .card .card-actions{display:none;}   /* hide per-card buttons while selecting */
+body.select-mode .card .card-city{opacity:0 !important;}  /* checkbox owns the corner */
+.card-check{display:none;position:absolute;top:7px;right:8px;width:20px;height:20px;border-radius:5px;border:2px solid var(--muted);background:rgba(15,17,23,.85);align-items:center;justify-content:center;font-size:12px;color:transparent;z-index:5;}
+body.select-mode .card .card-check{display:flex;}
+.card.selected{border-color:#0ea5e9;box-shadow:0 0 0 2px rgba(14,165,233,.4);}
+.card.selected .card-check{background:#0ea5e9;border-color:#0ea5e9;color:#fff;}
+/* per-day select-all control in column header */
+.col-selall{display:none;font-size:9.5px;font-family:'DM Mono',monospace;color:#7dd3fc;background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3);border-radius:5px;padding:2px 7px;cursor:pointer;margin-top:5px;}
+.col-selall:hover{background:rgba(14,165,233,.25);}
+body.select-mode .col-selall{display:inline-block;}
+
+/* ── SELECTION ACTION BAR ── */
+.sel-bar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(140%);transition:transform .22s ease;background:#0c1322;border:1px solid #1e3a5a;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:14px;z-index:1600;box-shadow:0 10px 40px rgba(0,0,0,.55);flex-wrap:wrap;justify-content:center;max-width:94vw;}
+.sel-bar.show{transform:translateX(-50%) translateY(0);}
+.sel-count{font-size:12.5px;font-family:'DM Mono',monospace;color:var(--muted);white-space:nowrap;}
+.sel-count b{color:#7dd3fc;font-size:14px;}
+.sel-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.sel-btn{background:var(--s2);border:1px solid var(--bdr);color:var(--txt);border-radius:7px;padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .12s;}
+.sel-btn:hover{background:var(--bdr);}
+.sel-btn-danger{background:#2a0606;border-color:#5a0f0f;color:#fca5a5;}
+.sel-btn-danger:hover{background:#450a0a;}
+.sel-btn-ghost{background:none;color:var(--muted);}
+.sel-move-wrap{position:relative;}
+.sel-move-menu{display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:#0c1322;border:1px solid #1e3a5a;border-radius:8px;padding:5px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-height:240px;overflow-y:auto;}
+.sel-move-menu.show{display:block;}
+.sel-move-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--txt);font-size:12px;font-family:'DM Sans',sans-serif;padding:7px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;}
+.sel-move-menu button:hover{background:var(--bdr);}
+
+/* ── CONFIRM DIALOG ── */
+.confirm-box{background:#12172a;border:1px solid #2a2f4a;border-radius:14px;width:380px;max-width:100%;padding:24px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.55);}
+#confirm-overlay{z-index:1200;}
+.confirm-icon{font-size:34px;margin-bottom:10px;}
+.confirm-title{font-size:16px;font-weight:700;margin-bottom:8px;}
+.confirm-msg{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px;}
+.confirm-msg b{color:var(--txt);}
+.confirm-actions{display:flex;gap:8px;justify-content:center;}
+.btn-danger{background:#dc2626;border-color:#dc2626;color:#fff;}
+.btn-danger:hover{background:#b91c1c;}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px);padding:16px;}
+.overlay.open{display:flex;}
+.modal{background:#12172a;border:1px solid #252d4a;border-radius:12px;width:460px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--bdr);position:sticky;top:0;background:#12172a;}
+.modal-hdr span{font-size:14px;font-weight:700;}
+.modal-x{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;}
+.modal-x:hover{background:var(--bdr);color:var(--txt);}
+.modal-body{padding:20px;}
+.frow{margin-bottom:14px;}
+.frow label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
+.frow input,.frow select,.frow textarea{width:100%;background:var(--s2);border:1px solid var(--bdr);color:var(--txt);padding:10px;border-radius:6px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;}
+.frow input[type=date]{color-scheme:dark;}
+.frow input:focus,.frow select:focus,.frow textarea:focus{border-color:rgba(124,58,237,.65);}
+.frow select option{background:#12172a;}
+.frow textarea{resize:vertical;min-height:56px;}
+.check-row{display:flex;align-items:center;gap:9px;cursor:pointer;text-transform:none !important;letter-spacing:normal !important;font-size:14px !important;color:var(--txt) !important;font-family:'DM Sans',sans-serif !important;font-weight:500 !important;}
+.check-row input{width:auto !important;cursor:pointer;accent-color:#f5b301;transform:scale(1.2);}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a0a33;border:1px solid #4c1d95;color:#c4b5fd;padding:9px 20px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;}
+
+/* ════════ RESPONSIVE ════════ */
+/* Tablet: keep horizontal scroll, slightly smaller columns handled by JS min-width */
+@media (max-width:900px){
+  .hdr h1{font-size:16px;}
+  .wk-center{min-width:150px;}
+}
+/* Mobile: stack everything vertically, full-width columns, bigger touch targets */
+@media (max-width:640px){
+  body{padding:12px;}
+  .hdr{flex-direction:column;gap:8px;margin:-12px -12px 12px;padding:10px 12px;max-height:62vh;overflow-y:auto;}
+  .hdr p{display:none;}            /* hide subtitle when sticky to save height */
+  .btn-group{width:100%;}
+  .btn{flex:1;justify-content:center;padding:10px;font-size:12.5px;}
+  .controls{flex-direction:column;align-items:stretch;}
+  .week-nav{justify-content:space-between;}
+  .wk-center{flex:1;min-width:0;}
+  .traffic-ctl{justify-content:center;}
+  .board-wrap{overflow-x:visible;}
+  .board{grid-template-columns:1fr !important;}
+  .day-col{min-width:0;}
+  .card{cursor:default;padding:12px;}
+  .card-name{font-size:13.5px;padding-right:70px;}
+  .card-addr{font-size:11.5px;}
+  .card-city{opacity:1 !important;}     /* keep city tag visible on touch */
+  .card .card-actions{opacity:1;top:30px;}  /* buttons sit below the city tag */
+  .card-edit,.card-del,.card-star{width:26px;height:26px;font-size:13px;}
+  .card-del{font-size:16px;}
+  .bl-strip{grid-template-columns:1fr;}
+  .bl-strip .card{max-width:none;min-width:0;width:100%;}
+  .df-chip{padding:7px 13px;font-size:12.5px;}
+  .col-route{white-space:normal;}
+}
+</style>
+</head>
+<body>
+<div id="move-hint" class="move-hint"></div>
+<div id="app">
+  <div class="hdr">
+    <div>
+      <h1>📋 Site Visit Scheduler</h1>
+      <p>Base: Fairview, Quezon City &nbsp;·&nbsp; Max 4 stops/day &nbsp;·&nbsp; Window: 10:01 AM – 4:59 PM</p>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-add" onclick="openModal()">+ Add Client</button>
+      <button class="btn btn-select" id="select-toggle" onclick="toggleSelectMode()" title="Select multiple cards to move or delete in bulk">☑ Select</button>
+      <button class="btn btn-data" onclick="exportData()" title="Download all your data as a backup file">⤓ Export Data</button>
+      <button class="btn btn-data" onclick="document.getElementById('import-file').click()" title="Load data from a backup file">⤒ Import Data</button>
+      <button class="btn" onclick="exportPNG('board-wrap','Board.png')">⬇ Board</button>
+      <button class="btn" onclick="exportPNG('app','Schedule.png')">⬇ Full</button>
+      <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importDataFile(event)">
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="week-nav">
+      <button class="wk-arrow" onclick="shiftWeek(-1)" title="Previous week">‹</button>
+      <div class="wk-center">
+        <span id="week-label" class="wk-label">Week of —</span>
+        <input type="date" id="week-picker" class="wk-picker" onchange="setWeekFromPicker(this.value)" title="Jump to a week">
+      </div>
+      <button class="wk-arrow" onclick="shiftWeek(1)" title="Next week">›</button>
+    </div>
+    <div class="traffic-ctl" onclick="toggleTraffic()" title="Toggle Metro Manila traffic estimates">
+      <span class="traffic-ico">🚦</span>
+      <span class="traffic-txt">Traffic: <b id="traffic-state">ON</b></span>
+      <span id="traffic-switch" class="switch"><span class="knob"></span></span>
+    </div>
+  </div>
+
+  <div id="day-filter" class="day-filter"></div>
+
+  <div id="board-wrap" class="board-wrap">
+    <div id="board" class="board"></div>
+  </div>
+
+  <div class="backlog-sec" id="backlog-sec">
+    <div class="bl-hdr">
+      <span class="bl-title">📥 Backlog / Deferred</span>
+      <span id="bl-count" class="bl-count">0 cards</span>
+      <span class="bl-sub">Drag (desktop) or tap-to-move · shared across all weeks</span>
+    </div>
+    <div id="bl-strip" class="bl-strip" data-day="backlog"></div>
+  </div>
+</div>
+
+<!-- Add / Edit Client Modal -->
+<div id="overlay" class="overlay" onclick="maybeClose(event)">
+  <div class="modal" id="modal">
+    <div class="modal-hdr">
+      <span id="modal-title">+ Add New Client</span>
+      <button class="modal-x" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="frow">
+        <label>Client Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Juan dela Cruz" autocomplete="off">
+      </div>
+      <div class="frow">
+        <label>Address *</label>
+        <input type="text" id="f-addr" placeholder="e.g. 123 Main St., Brgy. San Isidro" autocomplete="off">
+      </div>
+      <div class="frow">
+        <label>City *</label>
+        <select id="f-city" onchange="onCityChange()">
+          <option value="">— Select city —</option>
+          <option value="Quezon City">Quezon City</option>
+          <option value="Caloocan">Caloocan</option>
+          <option value="Manila">Manila</option>
+          <option value="Mandaluyong">Mandaluyong</option>
+          <option value="Marikina">Marikina</option>
+          <option value="Pasig">Pasig</option>
+          <option value="Pateros">Pateros</option>
+          <option value="San Juan">San Juan</option>
+          <option value="Makati">Makati</option>
+          <option value="Pasay">Pasay</option>
+          <option value="Taguig">Taguig</option>
+          <option value="Para&#xF1;aque">Para&#xF1;aque</option>
+          <option value="Las Pi&#xF1;as">Las Pi&#xF1;as</option>
+          <option value="Muntinlupa">Muntinlupa</option>
+          <option value="Malabon">Malabon</option>
+          <option value="Navotas">Navotas</option>
+          <option value="Valenzuela">Valenzuela</option>
+          <option value="Pandi, Bulacan">Pandi, Bulacan</option>
+          <option value="Meycauayan, Bulacan">Meycauayan, Bulacan</option>
+          <option value="San Jose del Monte, Bulacan">San Jose del Monte, Bulacan</option>
+          <option value="__other">Other / Custom...</option>
+        </select>
+      </div>
+      <div class="frow" id="f-custom-row" style="display:none">
+        <label>Custom City / Location</label>
+        <input type="text" id="f-custom" placeholder="e.g. Antipolo, Rizal" autocomplete="off">
+      </div>
+      <div class="frow">
+        <label>Notes (optional)</label>
+        <textarea id="f-notes" placeholder="e.g. Morning visits only · Must confirm gate pass first" rows="2"></textarea>
+      </div>
+      <div class="frow">
+        <label>Date <span style="font-weight:400;text-transform:none;letter-spacing:0;">(the date shown on the card)</span></label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="frow">
+        <label class="check-row" for="f-priority">
+          <input type="checkbox" id="f-priority">
+          <span>&#x2B50; Mark as priority client</span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-add" id="modal-submit" onclick="handleSubmit()">Add to Backlog &#x2192;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk selection action bar (shown in Select mode) -->
+<div id="sel-bar" class="sel-bar">
+  <span class="sel-count"><b id="sel-count-n">0</b> selected</span>
+  <div class="sel-actions">
+    <div class="sel-move-wrap">
+      <button class="sel-btn" id="sel-move-btn" onclick="toggleMoveMenu(event)">Move to day ▾</button>
+      <div id="sel-move-menu" class="sel-move-menu"></div>
+    </div>
+    <button class="sel-btn" onclick="bulkMoveToBacklog()">→ Backlog</button>
+    <button class="sel-btn sel-btn-danger" onclick="bulkDelete()">🗑 Delete</button>
+    <button class="sel-btn sel-btn-ghost" onclick="exitSelectMode()">Done</button>
+  </div>
+</div>
+
+<!-- Custom confirm dialog (replaces native confirm) -->
+<div id="confirm-overlay" class="overlay" onclick="if(event.target===this)closeConfirm()">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">🗑</div>
+    <div class="confirm-title" id="confirm-title">Remove client?</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-actions">
+      <button class="btn" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ════════ DATA ════════
+const CITY_CK = {
+  'Quezon City':'qc','QC':'qc','Caloocan':'cal','Caloocan City':'cal',
+  'Pasig':'psg','Pasig City':'psg','Pateros':'pat','San Juan':'sj',
+  'Pandi, Bulacan':'bul','Meycauayan, Bulacan':'bul','San Jose del Monte, Bulacan':'bul',
+  'Bulacan':'bul','Manila':'mnl','Manila City':'mnl','Makati':'mak','Makati City':'mak',
+  'Para\u00f1aque':'par','Paranaque':'par','Pasay':'pas','Taguig':'tag','Taguig City':'tag',
+  'Mandaluyong':'mnd','Marikina':'mrk','Las Pi\u00f1as':'lp','Las Pinas':'lp',
+  'Muntinlupa':'mnt','Valenzuela':'val','Malabon':'mlb','Navotas':'nav'
+}
+const FB_CK = {
+  qc:22,cal:25,psg:55,pat:65,sj:45,bul:60,mnl:52,mak:62,par:68,pas:58,
+  tag:62,mnd:48,mrk:38,lp:75,mnt:78,val:34,mlb:30,nav:28,oth:45
+}
+function cityKey(c){ return CITY_CK[c]||'oth' }
+
+// cross-city travel fallback (minutes, midday traffic)
+const CF = {
+  'qc:qc':22,'qc:cal':28,'qc:psg':42,'qc:pat':52,'qc:sj':38,'qc:bul':62,'qc:mnl':40,'qc:mak':52,'qc:par':68,'qc:pas':55,'qc:tag':62,'qc:mnd':45,'qc:mrk':35,'qc:lp':78,'qc:mnt':80,'qc:val':34,'qc:mlb':32,'qc:nav':30,'qc:oth':44,
+  'cal:qc':28,'cal:cal':18,'cal:psg':50,'cal:pat':60,'cal:sj':48,'cal:bul':42,'cal:mnl':45,'cal:mak':58,'cal:par':72,'cal:pas':60,'cal:tag':68,'cal:mnd':50,'cal:mrk':42,'cal:lp':82,'cal:mnt':85,'cal:val':28,'cal:mlb':18,'cal:nav':15,'cal:oth':48,
+  'psg:qc':42,'psg:cal':50,'psg:psg':20,'psg:pat':28,'psg:sj':22,'psg:bul':78,'psg:mnl':35,'psg:mak':32,'psg:par':45,'psg:pas':38,'psg:tag':35,'psg:mnd':25,'psg:mrk':30,'psg:lp':55,'psg:mnt':58,'psg:val':60,'psg:mlb':58,'psg:nav':60,'psg:oth':38,
+  'pat:qc':52,'pat:cal':60,'pat:psg':28,'pat:pat':15,'pat:sj':25,'pat:bul':85,'pat:mnl':40,'pat:mak':38,'pat:par':50,'pat:pas':45,'pat:tag':40,'pat:mnd':32,'pat:mrk':38,'pat:lp':62,'pat:mnt':65,'pat:val':68,'pat:mlb':68,'pat:nav':70,'pat:oth':45,
+  'sj:qc':38,'sj:cal':48,'sj:psg':22,'sj:pat':25,'sj:sj':15,'sj:bul':75,'sj:mnl':30,'sj:mak':28,'sj:par':42,'sj:pas':35,'sj:tag':32,'sj:mnd':20,'sj:mrk':28,'sj:lp':52,'sj:mnt':55,'sj:val':55,'sj:mlb':55,'sj:nav':58,'sj:oth':36,
+  'bul:qc':60,'bul:cal':42,'bul:psg':72,'bul:pat':82,'bul:sj':72,'bul:bul':15,'bul:mnl':70,'bul:mak':80,'bul:par':92,'bul:pas':82,'bul:tag':88,'bul:mnd':72,'bul:mrk':65,'bul:lp':100,'bul:mnt':105,'bul:val':45,'bul:mlb':45,'bul:nav':42,'bul:oth':68,
+  'mnl:qc':40,'mnl:cal':45,'mnl:psg':35,'mnl:pat':40,'mnl:sj':30,'mnl:bul':70,'mnl:mnl':20,'mnl:mak':28,'mnl:par':42,'mnl:pas':25,'mnl:tag':35,'mnl:mnd':22,'mnl:mrk':45,'mnl:lp':52,'mnl:mnt':55,'mnl:val':50,'mnl:mlb':48,'mnl:nav':50,'mnl:oth':35,
+  'mak:qc':52,'mak:cal':58,'mak:psg':32,'mak:pat':38,'mak:sj':28,'mak:bul':80,'mak:mnl':28,'mak:mak':18,'mak:par':35,'mak:pas':22,'mak:tag':28,'mak:mnd':25,'mak:mrk':42,'mak:lp':45,'mak:mnt':48,'mak:val':60,'mak:mlb':60,'mak:nav':62,'mak:oth':40,
+  'tag:qc':62,'tag:cal':68,'tag:psg':35,'tag:pat':40,'tag:sj':32,'tag:bul':88,'tag:mnl':35,'tag:mak':28,'tag:par':30,'tag:pas':28,'tag:tag':15,'tag:mnd':32,'tag:mrk':48,'tag:lp':38,'tag:mnt':35,'tag:val':70,'tag:mlb':72,'tag:nav':74,'tag:oth':45,
+  'oth:oth':35,'oth:qc':44,'qc:oth':44
+}
+
+// specific pair travel times (minutes, midday traffic)
+const TP = {
+  'thess:patty':22,'patty:thess':22,'thess:johnny':35,'johnny:thess':35,
+  'thess:dexter':28,'dexter:thess':28,'patty:johnny':30,'johnny:patty':30,
+  'patty:dexter':22,'dexter:patty':22,'johnny:dexter':30,'dexter:johnny':30,
+  'ailyn:jensen':25,'jensen:ailyn':25,'ailyn:kevin':28,'kevin:ailyn':28,
+  'ailyn:jinky':35,'jinky:ailyn':35,'jensen:kevin':15,'kevin:jensen':15,
+  'jensen:jinky':20,'jinky:jensen':20,'kevin:jinky':18,'jinky:kevin':18,
+  'jack:playdium':25,'playdium:jack':25,'jack:tyrone':30,'tyrone:jack':30,
+  'playdium:tyrone':18,'tyrone:playdium':18,'playdium:edmond':22,'edmond:playdium':22,
+  'tyrone:edmond':20,'edmond:tyrone':20,'edmond:engr':25,'engr:edmond':25,
+  'wilbert:edmond':50,'edmond:wilbert':50,'wilbert:engr':55,'engr:wilbert':55,
+  'jack:edmond':30,'edmond:jack':30,'wilbert:jack':40,'jack:wilbert':40,
+  'ailyn:playdium':30,'playdium:ailyn':30,'ailyn:tyrone':32,'tyrone:ailyn':32
+}
+
+// ── BASE CLIENTS ──
+const BASE_C = {
+  thess:  {n:'Thess Dionisio',                  city:'Pasig',           ck:'psg',addr:'San Lorenzo, Kapitolyo, Pasig',            cr:'Apr 24',fb:55,flags:[]},
+  patty:  {n:'Patty',                           city:'Pasig',           ck:'psg',addr:'Kalikasan St., Karangalan Village, Pasig', cr:'May 14',fb:55,flags:[]},
+  johnny: {n:'Johnny Limsoc',                   city:'Pateros',         ck:'pat',addr:'Captain Musni St., Pateros',               cr:'May 19',fb:65,flags:[]},
+  dexter: {n:'Dexter Lim',                      city:'San Juan',        ck:'sj', addr:'Lt. Artiaga St., San Juan',                cr:'May 29',fb:50,flags:[]},
+  ailyn:  {n:'Ailyn Lopez',                     city:'Quezon City',     ck:'qc', addr:'Metropoli Drive, Libis, QC',               cr:'May 29',fb:35,flags:['FIXED','AM ONLY'],fixedDay:'wed',priority:true},
+  jensen: {n:'Jensen Clemente',                 city:'Quezon City',     ck:'qc', addr:'10 Bright Hill, New Manila, QC',           cr:'May 29',fb:30,flags:['NEW']},
+  kevin:  {n:'Kevin Lee',                       city:'Quezon City',     ck:'qc', addr:'143 N. Domingo, Quezon City',              cr:'May 29',fb:25,flags:['NEW']},
+  jinky:  {n:'Jinky Teng',                      city:'Quezon City',     ck:'qc', addr:'Scout Oscar M. Alcaraz, Brgy St. Peter',  cr:'May 8', fb:30,flags:[]},
+  jack:   {n:'Jack Conroy Qua Lua',             city:'Caloocan',        ck:'cal',addr:'University Hills, Caloocan (ISOLATED)',    cr:'May 28',fb:25,flags:['DEADLINE Jun5','ISOLATED'],deadline:'Fri Jun 5'},
+  playdium:{n:'Playdium Bowling',               city:'Quezon City',     ck:'qc', addr:'Tagupo St., Tatalon, QC',                 cr:'May 25',fb:20,flags:[]},
+  tyrone: {n:'Tyrone (Grandstone Tire Centre)', city:'Quezon City',     ck:'qc', addr:'54 Apo St., Quezon City',                 cr:'May 3', fb:22,flags:[]},
+  edmond: {n:'Edmond Sy',                       city:'Quezon City',     ck:'qc', addr:'Sto. Tomas St., Don Manuel, QC',          cr:'May 19',fb:30,flags:[]},
+  engr:   {n:'Engr Richard \u2013 Tivoli',      city:'Quezon City',     ck:'qc', addr:'Solomon St., Tivoli Royale Subd., QC',   cr:'May 26',fb:20,flags:[]},
+  wilbert:{n:'Wilbert Uy \u2013 Bulacan',       city:'Pandi, Bulacan',  ck:'bul',addr:'Barrio Poblacion, Pandi, Bulacan',        cr:'May 18',fb:60,flags:[]}
+}
+
+// ── DAYS (Mon–Sun). Coding plates fixed per weekday; Mon & weekends free ──
+const DAYS = {
+  mon:{n:'Monday',   off:0,coding:'No coding',   free:true, color:'#94a3b8'},
+  tue:{n:'Tuesday',  off:1,coding:'Plates 3 & 4', color:'#60a5fa'},
+  wed:{n:'Wednesday',off:2,coding:'Plates 5 & 6', color:'#c084fc'},
+  thu:{n:'Thursday', off:3,coding:'Plates 7 & 8', color:'#f97316'},
+  fri:{n:'Friday',   off:4,coding:'Plates 9 & 0', color:'#4ade80'},
+  sat:{n:'Saturday', off:5,coding:'No coding',   free:true, color:'#fbbf24'},
+  sun:{n:'Sunday',   off:6,coding:'No coding',   free:true, color:'#f472b6'}
+}
+const DAY_KEYS = ['mon','tue','wed','thu','fri','sat','sun']
+
+// ── DEFAULT SCHEDULE (seeds week of Mon Jun 1, 2026) ──
+const DEFAULT_WEEK_KEY = '2026-06-01'
+const DEFAULT_WEEK = {
+  mon:[], tue:['thess','patty','johnny'], wed:['ailyn','jensen','kevin','jinky'],
+  thu:['jack','playdium','tyrone'], fri:['wilbert','edmond','engr'], sat:[], sun:[]
+}
+const DEFAULT_BACKLOG = ['dexter']
+const DEFAULT_VISIBLE = ['mon','tue','wed','thu','fri','sat','sun']
+
+// ── LIVE STATE ──
+let C={}, WEEKS={}, BACKLOG=[], S={}, weekStart=null
+let trafficOn=true, visibleDays=DEFAULT_VISIBLE.slice(), moveSel=null
+let selectMode=false
+const selectedIds=new Set()
+const FREE_FLOW=0.55
+
+// ── STORAGE ──
+const LS_C='svs_clients_v2', LS_W='svs_weeks_v3', LS_BL='svs_backlog_v2', LS_CFG='svs_cfg_v3'
+
+function emptyWeek(){ return {mon:[],tue:[],wed:[],thu:[],fri:[],sat:[],sun:[]} }
+function normWeek(w){ const o=emptyWeek(); DAY_KEYS.forEach(d=>{ if(Array.isArray(w&&w[d])) o[d]=w[d] }); return o }
+function weekKey(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd }
+function parseKey(k){ const p=k.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]) }
+// snap any date to MONDAY of its ISO week
+function snapToMonday(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); const dow=x.getDay(); const delta=(dow===0)?-6:(1-dow); x.setDate(x.getDate()+delta); return x }
+
+function saveState(){
+  try{
+    WEEKS[weekKey(weekStart)]=normWeek({mon:S.mon,tue:S.tue,wed:S.wed,thu:S.thu,fri:S.fri,sat:S.sat,sun:S.sun})
+    localStorage.setItem(LS_C,JSON.stringify(C))
+    localStorage.setItem(LS_W,JSON.stringify(WEEKS))
+    localStorage.setItem(LS_BL,JSON.stringify(BACKLOG))
+    localStorage.setItem(LS_CFG,JSON.stringify({weekStart:weekKey(weekStart),trafficOn,visibleDays}))
+  }catch(e){}
+}
+
+function loadState(){
+  C=JSON.parse(JSON.stringify(BASE_C))
+  WEEKS={}; BACKLOG=[]
+  let cfgWeek=DEFAULT_WEEK_KEY
+  try{
+    const sc=localStorage.getItem(LS_C)
+    if(sc){ const sv=JSON.parse(sc); Object.keys(sv).forEach(id=>{ C[id]=(id in BASE_C)?Object.assign({},BASE_C[id],sv[id]):sv[id] }) }
+
+    // Load v3 weeks; if absent, migrate any old v2 (Tue-anchored, 4-day) weeks
+    const w3=localStorage.getItem(LS_W)
+    if(w3){
+      const raw=JSON.parse(w3); Object.keys(raw).forEach(k=>{ WEEKS[k]=normWeek(raw[k]) })
+    } else {
+      const w2=localStorage.getItem('svs_weeks_v2')
+      if(w2){
+        const raw=JSON.parse(w2)
+        Object.keys(raw).forEach(k=>{
+          const norm=normWeek(raw[k]); const d=parseKey(k)
+          // old keys were Tuesday-anchored → re-key to that week's Monday
+          const mon=snapToMonday(d); WEEKS[weekKey(mon)]=norm
+        })
+      }
+    }
+    const sbl=localStorage.getItem(LS_BL); if(sbl) BACKLOG=JSON.parse(sbl)
+    const cfg=localStorage.getItem(LS_CFG)||localStorage.getItem('svs_cfg_v2')
+    if(cfg){ const o=JSON.parse(cfg)
+      if(o.weekStart) cfgWeek=o.weekStart
+      if(typeof o.trafficOn==='boolean') trafficOn=o.trafficOn
+      if(Array.isArray(o.visibleDays)&&o.visibleDays.length) visibleDays=o.visibleDays.filter(d=>DAY_KEYS.includes(d))
+    }
+  }catch(e){}
+
+  const fresh = !localStorage.getItem(LS_W) && !localStorage.getItem('svs_weeks_v2')
+  if(fresh){ WEEKS[DEFAULT_WEEK_KEY]=normWeek(DEFAULT_WEEK); BACKLOG=JSON.parse(JSON.stringify(DEFAULT_BACKLOG)) }
+
+  weekStart=snapToMonday(parseKey(cfgWeek))
+  activateWeek(); validateState(true)
+}
+
+function activateWeek(){
+  const k=weekKey(weekStart)
+  if(!WEEKS[k]) WEEKS[k]=emptyWeek()
+  const w=WEEKS[k]
+  S={mon:w.mon,tue:w.tue,wed:w.wed,thu:w.thu,fri:w.fri,sat:w.sat,sun:w.sun,backlog:BACKLOG}
+}
+
+function validateState(reviveOrphans){
+  DAY_KEYS.forEach(d=>{ S[d]=(S[d]||[]).filter(id=>id in C) })
+  // Only on initial load / import: rescue any client that exists but was never placed
+  // anywhere (so imported data can't silently vanish). NOT on week switches — that was
+  // resurrecting deleted clients into the backlog.
+  if(reviveOrphans){
+    const placed=new Set([...Object.values(WEEKS).flatMap(w=>DAY_KEYS.flatMap(d=>w[d]||[])),...BACKLOG])
+    Object.keys(C).forEach(id=>{ if(!placed.has(id)) BACKLOG.push(id) })
+  }
+  const dd=[...new Set(BACKLOG)]; BACKLOG.length=0; BACKLOG.push(...dd)
+  S.backlog=BACKLOG
+}
+
+// ── WEEK / DATE HELPERS ──
+function dayDate(k){ const d=new Date(weekStart); d.setDate(d.getDate()+DAYS[k].off); return d }
+function fmtDate(d){ return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) }
+function weekLabel(){ const mon=dayDate('mon'), sun=dayDate('sun'); return fmtDate(mon)+' – '+fmtDate(sun)+', '+sun.getFullYear() }
+function shiftWeek(n){ saveState(); const d=new Date(weekStart); d.setDate(d.getDate()+n*7); weekStart=snapToMonday(d); cancelMove(); activateWeek(); validateState(); render(); syncWeekPicker() }
+function setWeekFromPicker(v){ if(!v) return; saveState(); const p=v.split('-').map(Number); weekStart=snapToMonday(new Date(p[0],p[1]-1,p[2])); cancelMove(); activateWeek(); validateState(); render(); syncWeekPicker(); toast('Week of '+fmtDate(dayDate('mon'))) }
+function syncWeekPicker(){ const el=document.getElementById('week-picker'); if(el) el.value=weekKey(weekStart); const l=document.getElementById('week-label'); if(l) l.textContent='Week of '+weekLabel() }
+
+// ── TRAFFIC ──
+function toggleTraffic(){ trafficOn=!trafficOn; document.getElementById('traffic-state').textContent=trafficOn?'ON':'OFF'; document.getElementById('traffic-switch').classList.toggle('off',!trafficOn); render(); toast(trafficOn?'Traffic estimates ON':'Showing free-flow (no-traffic) times') }
+function adj(m){ return trafficOn?m:Math.max(5,Math.round(m*FREE_FLOW)) }
+
+// ── DAY FILTER ──
+function renderFilter(){
+  const wrap=document.getElementById('day-filter')
+  const chips=DAY_KEYS.map(d=>{
+    const on=visibleDays.includes(d)
+    return '<span class="df-chip'+(on?' on':'')+'" onclick="toggleDay(\''+d+'\')">'+DAYS[d].n.slice(0,3)+'</span>'
+  }).join('')
+  const allOn=visibleDays.length===7
+  const preset = allOn
+    ? '<button class="df-preset" onclick="setDays([\'mon\',\'tue\',\'wed\',\'thu\',\'fri\'])">Weekdays only</button>'
+    : '<button class="df-preset" onclick="setDays([\'mon\',\'tue\',\'wed\',\'thu\',\'fri\',\'sat\',\'sun\'])">Show all 7</button>'
+  wrap.innerHTML='<span class="df-label">Show days</span>'+chips+'<span class="df-spacer"></span>'+preset
+}
+function toggleDay(d){
+  const i=visibleDays.indexOf(d)
+  if(i>-1){ if(visibleDays.length===1){ toast('Keep at least one day visible'); return } visibleDays.splice(i,1) }
+  else visibleDays.push(d)
+  visibleDays=DAY_KEYS.filter(k=>visibleDays.includes(k)) // keep order
+  render()
+}
+function setDays(arr){ visibleDays=DAY_KEYS.filter(k=>arr.includes(k)); render() }
+
+// ── DUPLICATE-NAME DETECTION ──
+// Returns a list of existing clients whose name matches `name` (case-insensitive),
+// each with a human-readable description of where they're scheduled.
+function findClientsByName(name, exceptId){
+  const norm=name.trim().toLowerCase()
+  const matches=[]
+  Object.keys(C).forEach(id=>{
+    if(id===exceptId) return
+    if((C[id].n||'').trim().toLowerCase()!==norm) return
+    matches.push({id, where:describePlacements(id)})
+  })
+  return matches
+}
+// Build a readable list of every place a client id appears
+function describePlacements(id){
+  const spots=[]
+  Object.keys(WEEKS).forEach(wk=>{
+    const w=WEEKS[wk]
+    DAY_KEYS.forEach(d=>{
+      if((w[d]||[]).includes(id)){
+        const dt=new Date(parseKey(wk)); dt.setDate(dt.getDate()+DAYS[d].off)
+        spots.push(DAYS[d].n+', '+fmtDate(dt))
+      }
+    })
+  })
+  if(BACKLOG.includes(id)) spots.push('Backlog')
+  return spots.length?spots:['not currently scheduled']
+}
+
+// ── TRAVEL / TIMING ──
+const fmt=m=>{const h=Math.floor(m/60),mn=m%60,p=h<12?'AM':'PM',h12=h%12||12;return h12+':'+String(mn).padStart(2,'0')+' '+p}
+function travel(a,b){
+  if(a==='base') return adj(C[b].fb)
+  const k=a+':'+b; if(TP[k]) return adj(TP[k])
+  const ck=C[a]&&C[b]?C[a].ck+':'+C[b].ck:null
+  if(ck&&CF[ck]) return adj(CF[ck])
+  return adj(Math.round(((C[a]&&C[a].fb||45)+(C[b]&&C[b].fb||45))*0.42))
+}
+function calcTimes(day){
+  const cards=S[day]||[]; if(!cards.length) return []
+  const MIN=30,MAX=90; let ts=[],t=10*60+1,prev='base'
+  const aF=(day==='wed'&&cards[0]==='ailyn')
+  for(let i=0;i<cards.length;i++){ const id=cards[i]; if(!C[id]) continue
+    const tr=travel(prev,id); const arr=(i===0&&aF)?600:t+tr
+    ts.push({id,tr,arr,dE:arr+MIN,dL:arr+MAX}); t=arr+(MIN+MAX)/2; prev=id }
+  if(ts.length){ const l=ts[ts.length-1]; const rt=adj(C[l.id]&&C[l.id].fb||30); ts.push({ret:true,rE:l.dE+rt,rL:l.dL+rt}) }
+  return ts
+}
+function warns(id,day){
+  const c=C[id],w=[]
+  if(c&&c.fixedDay&&day!=='backlog'&&day!==c.fixedDay) w.push('\u26a0\ufe0f Must be on '+(DAYS[c.fixedDay]&&DAYS[c.fixedDay].n)+' ('+fmtDate(dayDate(c.fixedDay))+'), AM only')
+  if(c&&c.deadline&&day==='backlog') w.push('\u26a0\ufe0f DEADLINE: schedule before '+c.deadline)
+  return w
+}
+function route(day){ const cards=S[day]||[]; if(!cards.length) return '\u2014'; return 'FV \u2192 '+cards.map(id=>C[id]?C[id].city.replace('Quezon City','QC').replace(', Bulacan',''):'?').join(' \u2192 ')+' \u2192 FV' }
+function genId(name){ return 'uc_'+name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,8)+'_'+Date.now().toString(36).slice(-4) }
+function todayStr(){ return new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}) }
+function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0') }
+const _MONTHS={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11}
+// "May 29" -> "2026-05-29" (best effort, uses the active week's year); '' if unparseable
+function crToISO(cr){
+  if(!cr) return ''
+  const m=String(cr).trim().match(/^([A-Za-z]{3})[a-z]*\s+(\d{1,2})$/)
+  if(!m) return ''
+  const mo=_MONTHS[m[1].slice(0,3)]; if(mo==null) return ''
+  const y=(weekStart?weekStart.getFullYear():new Date().getFullYear())
+  return y+'-'+String(mo+1).padStart(2,'0')+'-'+String(+m[2]).padStart(2,'0')
+}
+// "2026-05-29" -> "May 29" for card display
+function isoToCr(iso){ if(!iso) return ''; const p=iso.split('-').map(Number); const d=new Date(p[0],p[1]-1,p[2]); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) }
+
+// ── RENDER ──
+function render(){ renderFilter(); renderBoard(); renderBacklog(); refreshMoveTargets(); saveState(); if(selectMode) updateSelBar(); requestAnimationFrame(capBacklog) }
+
+// Cap the backlog to ~4 rows tall, then make it scroll. Measures actual card heights
+// so it adapts to content and the current column count (3 / 2 / 1 by breakpoint).
+function capBacklog(){
+  const strip=document.getElementById('bl-strip'); if(!strip) return
+  const cards=strip.querySelectorAll('.card')
+  const cols = window.matchMedia('(max-width:640px)').matches?1 : (window.matchMedia('(max-width:1000px)').matches?2:3)
+  const gap=10
+  if(cards.length > cols*4){
+    let h=0; cards.forEach(c=>{ h=Math.max(h, c.offsetHeight) })
+    strip.style.maxHeight=(h*4 + gap*3 + 4)+'px'
+    strip.style.overflowY='auto'
+    strip.style.paddingRight='6px'
+  } else {
+    strip.style.maxHeight=''
+    strip.style.overflowY=''
+    strip.style.paddingRight=''
+  }
+}
+function renderBoard(){
+  const board=document.getElementById('board')
+  const shown=DAY_KEYS.filter(d=>visibleDays.includes(d))
+  board.style.gridTemplateColumns='repeat('+shown.length+', minmax(220px, 1fr))'
+  board.innerHTML=shown.map(d=>renderCol(d,DAYS[d])).join('')
+}
+function renderCol(day,info){
+  const cards=S[day]||[],ts=calcTimes(day),cnt=cards.length
+  const sc=cnt>4?'over':cnt>=4?'full':cnt>=3?'near':''
+  return '<div class="day-col" data-daycol="'+day+'" id="col-'+day+'" style="border-top:3px solid '+info.color+'">'
+    +'<div class="col-hdr"><div class="col-title-row"><div>'
+    +'<div class="col-day-name" style="color:'+info.color+'">'+info.n+'</div>'
+    +'<div class="col-day-date">'+fmtDate(dayDate(day))+'</div>'
+    +'<div class="col-coding'+(info.free?' free':'')+'">'+(info.free?'\u2713 ':'\u26a0\ufe0f ')+info.coding+'</div>'
+    +'</div><div class="slot-badge '+sc+'">'+cnt+'/4</div></div>'
+    +'<div class="col-route" title="'+route(day)+'">'+route(day)+'</div>'
+    +(cnt?'<span class="col-selall" onclick="selectAllInDay(\''+day+'\',event)">'+(allSelectedIn(day)?'Clear':'Select all')+'</span>':'')
+    +'</div>'
+    +'<div class="col-body" data-day="'+day+'">'+renderTL(day,cards,ts)+'</div></div>'
+}
+function renderTL(day,cards,ts){
+  if(!cards.length) return '<div class="empty-slot">'+(moveSel?'Tap to move here':'Drop cards here')+'</div>'
+  const aF=(day==='wed'&&cards[0]==='ailyn')
+  let h='<div class="tl-dep">\ud83c\udfe0 '+(aF?'~9:20 AM (plate \u2260 5,6 or pre-7AM)':'10:01 AM depart')+'</div>'
+  let ti=0
+  cards.forEach((id,i)=>{ const t=ts[ti]; if(!t) return
+    h+='<div class="tl-arr"><div class="tl-ln"></div><span class="tl-tr">~'+t.tr+'min</span></div>'
+    h+=renderCard(id,day,t,i+1); ti++ })
+  const ret=ts.find(x=>x.ret)
+  if(ret){ const late=ret.rL>17*60; h+='<div class="tl-arr"><div class="tl-ln"></div></div><div class="tl-ret '+(late?'late':'ok')+'">\ud83c\udfe0 Back ~'+fmt(ret.rE)+'\u2013'+fmt(ret.rL)+' '+(late?'\u26a0\ufe0f near coding':'\u2713')+'</div>' }
+  return h
+}
+const FMAP={'FIXED':'f-fixed','AM ONLY':'f-amonly','NEW':'f-new','DEADLINE Jun5':'f-danger','ISOLATED':'f-warn','USER':'f-user'}
+function renderCard(id,day,timing,stopNum){
+  const c=C[id]; if(!c) return ''
+  const w=warns(id,day)
+  const flags=(c.flags||[]).map(f=>'<span class="flag '+(FMAP[f]||'')+'">'+f+'</span>').join('')
+  const timH=timing?'<div class="card-timing">\u23f0 '+fmt(timing.arr)+' \u2192 '+fmt(timing.dE)+'\u2013'+fmt(timing.dL)+'</div>':''
+  const notesH=c.notes?'<div class="card-notes">'+c.notes+'</div>':''
+  const warnH=w.map(x=>'<div class="card-warn">'+x+'</div>').join('')
+  const star=c.priority?'\u2605':'\u2606'
+  const picked=moveSel===id?' move-picked':''
+  const isSel=selectedIds.has(id)?' selected':''
+  return '<div class="card'+(w.length?' flagged':'')+(c.priority?' priority':'')+picked+isSel+'" draggable="true" data-id="'+id+'" data-day="'+day+'">'
+    +'<div class="card-check">\u2713</div>'
+    +'<div class="card-actions">'
+    +'<button class="card-star'+(c.priority?' on':'')+'" onclick="togglePriority(\''+id+'\',event)" title="'+(c.priority?'Priority \u2014 click to unset':'Set as priority')+'">'+star+'</button>'
+    +'<button class="card-edit" onclick="openEdit(\''+id+'\',event)" title="Edit">\u270e</button>'
+    +'<button class="card-del" onclick="delClient(\''+id+'\',event)" title="Remove">\u00d7</button>'
+    +'</div>'
+    +'<span class="badge card-city b-'+c.ck+'">'+c.city+'</span>'
+    +'<div class="card-name"><span class="stop-num">'+(stopNum||'\u00b7')+'</span> '+(c.priority?'<span class="pri-star">\u2605</span> ':'')+c.n+'</div>'
+    +'<div class="card-addr">'+c.addr+'</div>'
+    +'<div class="card-footer"><span class="card-date">\ud83d\udcc5 '+c.cr+'</span><div class="card-flags">'+flags+'</div></div>'
+    +timH+notesH+warnH+'</div>'
+}
+function renderBacklog(){
+  const bl=S.backlog||[]
+  document.getElementById('bl-count').textContent=bl.length+' card'+(bl.length!==1?'s':'')
+  document.getElementById('bl-strip').innerHTML=bl.length?bl.map(id=>renderCard(id,'backlog',null,null)).join(''):'<div class="bl-empty">\u2713 All clients scheduled</div>'
+}
+
+// ── DRAG & DROP (desktop) ──
+let dragId=null,dragFrom=null
+document.addEventListener('dragstart',e=>{ const card=e.target.closest('.card[draggable]'); if(!card) return; dragId=card.dataset.id; dragFrom=card.dataset.day; e.dataTransfer.effectAllowed='move'; setTimeout(()=>card.classList.add('dragging'),0) })
+document.addEventListener('dragend',()=>{ document.querySelectorAll('.card.dragging').forEach(c=>c.classList.remove('dragging')); document.querySelectorAll('.drop-line').forEach(el=>el.remove()); document.querySelectorAll('.day-col.drag-over').forEach(c=>c.classList.remove('drag-over')); dragId=null; dragFrom=null })
+document.addEventListener('dragover',e=>{ const zone=e.target.closest('.col-body,.bl-strip'); if(!zone||!dragId) return; e.preventDefault(); const col=e.target.closest('.day-col'); document.querySelectorAll('.day-col.drag-over').forEach(c=>c.classList.remove('drag-over')); if(col) col.classList.add('drag-over'); document.querySelectorAll('.drop-line').forEach(el=>el.remove()); const over=e.target.closest('.card'); if(over&&over.dataset.id!==dragId){ const r=over.getBoundingClientRect(); const ln=document.createElement('div'); ln.className='drop-line'; over.insertAdjacentElement(e.clientY<r.top+r.height/2?'beforebegin':'afterend',ln) } })
+document.addEventListener('dragleave',e=>{ if(!e.relatedTarget||!e.relatedTarget.closest('.day-col,.bl-strip')){ document.querySelectorAll('.drop-line').forEach(el=>el.remove()); document.querySelectorAll('.day-col.drag-over').forEach(c=>c.classList.remove('drag-over')) } })
+document.addEventListener('drop',e=>{ const zone=e.target.closest('.col-body,.bl-strip'); if(!zone||!dragId) return; e.preventDefault(); const tDay=zone.dataset.day; const fromArr=S[dragFrom]||[]; const fi=fromArr.indexOf(dragId); if(fi===-1) return; fromArr.splice(fi,1); const toArr=S[tDay]||(S[tDay]=[]); const over=e.target.closest('.card'); if(over&&over.dataset.id!==dragId&&toArr.includes(over.dataset.id)){ const r=over.getBoundingClientRect(); let ti=toArr.indexOf(over.dataset.id); if(e.clientY>=r.top+r.height/2) ti++; toArr.splice(Math.min(ti,toArr.length),0,dragId) } else { toArr.push(dragId) } render() })
+
+// ── TAP-TO-MOVE (touch + click; works everywhere) ──
+function cardTap(id){
+  if(moveSel===id){ cancelMove(); return }
+  moveSel=id; render(); showMoveHint()
+}
+function showMoveHint(){
+  const h=document.getElementById('move-hint'); const c=C[moveSel]
+  h.innerHTML='Moving <b>'+(c?c.n:'')+'</b> — tap a day or Backlog<button onclick="cancelMove()">Cancel</button>'
+  h.classList.add('show')
+}
+function cancelMove(){ moveSel=null; document.getElementById('move-hint').classList.remove('show'); refreshMoveTargets(); document.querySelectorAll('.card.move-picked').forEach(c=>c.classList.remove('move-picked')) }
+function refreshMoveTargets(){
+  const on=!!moveSel
+  document.querySelectorAll('.day-col').forEach(c=>c.classList.toggle('move-target',on))
+  document.getElementById('backlog-sec').classList.toggle('move-target',on)
+  if(on) showMoveHint(); else document.getElementById('move-hint').classList.remove('show')
+}
+function moveSelTo(targetDay){
+  if(!moveSel) return
+  const id=moveSel
+  DAY_KEYS.forEach(d=>{ S[d]=(S[d]||[]).filter(x=>x!==id) })
+  const bi=BACKLOG.indexOf(id); if(bi>-1) BACKLOG.splice(bi,1)
+  S.backlog=BACKLOG
+  if(targetDay==='backlog') BACKLOG.push(id); else (S[targetDay]||(S[targetDay]=[])).push(id)
+  const nm=C[id]?C[id].n:''
+  cancelMove(); render(); toast(nm+' moved')
+}
+// global click router — branches on select mode
+document.addEventListener('click',e=>{
+  if(e.target.closest('.card-actions')) return         // action buttons handle themselves
+  if(e.target.closest('.col-selall')) return           // handled by its own onclick
+  if(e.target.closest('.df-chip,.df-preset,.btn,.wk-arrow,.traffic-ctl,.modal,.move-hint,.week-nav,.sel-bar,.confirm-box')) return
+  const card=e.target.closest('.card[data-id]')
+  if(selectMode){
+    if(card){ toggleCardSelection(card.dataset.id) }
+    return
+  }
+  // normal mode: tap-to-move
+  if(moveSel){
+    const col=e.target.closest('[data-daycol]'); const bl=e.target.closest('#backlog-sec')
+    if(col){ moveSelTo(col.dataset.daycol); return }
+    if(bl){ moveSelTo('backlog'); return }
+  }
+  if(card){ cardTap(card.dataset.id) }
+})
+
+// ── MULTI-SELECT MODE ──
+function toggleSelectMode(){ selectMode?exitSelectMode():enterSelectMode() }
+function enterSelectMode(){
+  cancelMove()
+  selectMode=true
+  document.body.classList.add('select-mode')
+  document.getElementById('select-toggle').classList.add('active')
+  document.getElementById('select-toggle').textContent='\u2713 Selecting'
+  selectedIds.clear()
+  render(); updateSelBar()
+}
+function exitSelectMode(){
+  selectMode=false
+  selectedIds.clear()
+  document.body.classList.remove('select-mode')
+  document.getElementById('select-toggle').classList.remove('active')
+  document.getElementById('select-toggle').textContent='\u2611 Select'
+  closeMoveMenu()
+  render(); updateSelBar()
+}
+function toggleCardSelection(id){
+  if(selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id)
+  // toggle just this card's class without full re-render for snappiness
+  document.querySelectorAll('.card[data-id="'+id+'"]').forEach(el=>el.classList.toggle('selected',selectedIds.has(id)))
+  refreshSelAllLabels(); updateSelBar()
+}
+function allSelectedIn(day){
+  const cards=(S[day]||[]); return cards.length>0 && cards.every(id=>selectedIds.has(id))
+}
+function selectAllInDay(day,e){
+  if(e) e.stopPropagation()
+  if(!selectMode) enterSelectMode()
+  const cards=S[day]||[]
+  if(allSelectedIn(day)) cards.forEach(id=>selectedIds.delete(id))
+  else cards.forEach(id=>selectedIds.add(id))
+  render(); updateSelBar()
+}
+function refreshSelAllLabels(){
+  document.querySelectorAll('.day-col').forEach(col=>{
+    const day=col.dataset.daycol, lbl=col.querySelector('.col-selall')
+    if(lbl) lbl.textContent=allSelectedIn(day)?'Clear':'Select all'
+  })
+}
+function updateSelBar(){
+  const bar=document.getElementById('sel-bar'), n=selectedIds.size
+  document.getElementById('sel-count-n').textContent=n
+  bar.classList.toggle('show', selectMode)
+}
+// move-to-day dropdown inside the selection bar
+function toggleMoveMenu(e){
+  if(e) e.stopPropagation()
+  const menu=document.getElementById('sel-move-menu')
+  if(menu.classList.contains('show')){ menu.classList.remove('show'); return }
+  if(!selectedIds.size){ toast('Select at least one card first'); return }
+  menu.innerHTML=DAY_KEYS.filter(d=>visibleDays.includes(d))
+    .map(d=>'<button onclick="bulkMoveToDay(\''+d+'\')">'+DAYS[d].n+' \u00b7 '+fmtDate(dayDate(d))+'</button>').join('')
+  menu.classList.add('show')
+}
+function closeMoveMenu(){ const m=document.getElementById('sel-move-menu'); if(m) m.classList.remove('show') }
+document.addEventListener('click',e=>{ if(!e.target.closest('.sel-move-wrap')) closeMoveMenu() })
+
+function removeFromAllPlacements(id){
+  DAY_KEYS.forEach(d=>{ S[d]=(S[d]||[]).filter(x=>x!==id) })
+  const bi=BACKLOG.indexOf(id); if(bi>-1) BACKLOG.splice(bi,1)
+  S.backlog=BACKLOG
+}
+function bulkMoveToDay(day){
+  if(!selectedIds.size){ toast('Nothing selected'); return }
+  const ids=[...selectedIds]
+  ids.forEach(id=>{ removeFromAllPlacements(id); (S[day]||(S[day]=[])).push(id) })
+  closeMoveMenu()
+  const n=ids.length; exitSelectMode(); toast(n+' card'+(n!==1?'s':'')+' moved to '+DAYS[day].n)
+}
+function bulkMoveToBacklog(){
+  if(!selectedIds.size){ toast('Nothing selected'); return }
+  const ids=[...selectedIds]
+  ids.forEach(id=>{ removeFromAllPlacements(id); BACKLOG.push(id) })
+  const n=ids.length; exitSelectMode(); toast(n+' card'+(n!==1?'s':'')+' moved to backlog')
+}
+function bulkDelete(){
+  const n=selectedIds.size
+  if(!n){ toast('Nothing selected'); return }
+  const ids=[...selectedIds]
+  const names=ids.map(id=>C[id]?C[id].n:id)
+  const preview=names.slice(0,4).join(', ')+(names.length>4?' and '+(names.length-4)+' more':'')
+  openConfirm({
+    icon:'\ud83d\uddd1', title:'Delete '+n+' client'+(n!==1?'s':'')+'?',
+    msg:'This will permanently remove <b>'+preview+'</b> from all weeks and the backlog. This cannot be undone.',
+    okLabel:'Delete '+n,
+    onOk:()=>{
+      ids.forEach(id=>{
+        Object.values(WEEKS).forEach(w=>{ DAY_KEYS.forEach(d=>{ w[d]=(w[d]||[]).filter(x=>x!==id) }) })
+        removeFromAllPlacements(id)
+        delete C[id]                     // gone everywhere — won't resurface on any week
+      })
+      exitSelectMode(); activateWeek(); render(); toast(n+' client'+(n!==1?'s':'')+' removed')
+    }
+  })
+}
+
+// ── MODAL (add + edit) ──
+let editingId=null
+function setFormFields(o){ o=o||{}
+  document.getElementById('f-name').value=o.name||''
+  document.getElementById('f-addr').value=o.addr||''
+  document.getElementById('f-notes').value=o.notes||''
+  document.getElementById('f-priority').checked=!!o.priority
+  document.getElementById('f-date').value=o.dateISO || crToISO(o.dateDisplay) || ''
+  const sel=document.getElementById('f-city'); const city=o.city||''
+  const has=[...sel.options].some(x=>x.value===city)
+  if(city&&has){ sel.value=city; document.getElementById('f-custom').value=''; document.getElementById('f-custom-row').style.display='none' }
+  else if(city){ sel.value='__other'; document.getElementById('f-custom').value=city; document.getElementById('f-custom-row').style.display='block' }
+  else { sel.value=''; document.getElementById('f-custom').value=''; document.getElementById('f-custom-row').style.display='none' }
+}
+function openModal(){ cancelMove(); editingId=null; document.getElementById('modal-title').textContent='+ Add New Client'; document.getElementById('modal-submit').innerHTML='Add to Backlog \u2192'; setFormFields({dateISO:todayISO()}); document.getElementById('overlay').classList.add('open'); setTimeout(()=>document.getElementById('f-name').focus(),60) }
+function openEdit(id,e){ if(e) e.stopPropagation(); const c=C[id]; if(!c) return; cancelMove(); editingId=id; document.getElementById('modal-title').textContent='\u270e Edit Client'; document.getElementById('modal-submit').innerHTML='Save Changes'; setFormFields({name:c.n,addr:c.addr,city:c.city,notes:c.notes||'',priority:!!c.priority,dateISO:c.crISO||'',dateDisplay:c.cr}); document.getElementById('overlay').classList.add('open'); setTimeout(()=>document.getElementById('f-name').focus(),60) }
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); editingId=null; ['f-name','f-addr','f-notes','f-custom','f-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''}); document.getElementById('f-city').value=''; document.getElementById('f-priority').checked=false; document.getElementById('f-custom-row').style.display='none' }
+function maybeClose(e){ if(e.target===document.getElementById('overlay')) closeModal() }
+function onCityChange(){ document.getElementById('f-custom-row').style.display=document.getElementById('f-city').value==='__other'?'block':'none' }
+function readForm(){
+  const name=(document.getElementById('f-name').value||'').trim()
+  const addr=(document.getElementById('f-addr').value||'').trim()
+  const sel=document.getElementById('f-city').value
+  const custom=(document.getElementById('f-custom').value||'').trim()
+  const city=sel==='__other'?custom:sel
+  const notes=(document.getElementById('f-notes').value||'').trim()
+  const priority=document.getElementById('f-priority').checked
+  const dateISO=document.getElementById('f-date').value||''
+  if(!name){ toast('Name is required'); document.getElementById('f-name').focus(); return null }
+  if(!addr){ toast('Address is required'); document.getElementById('f-addr').focus(); return null }
+  if(!city){ toast('City is required'); document.getElementById('f-city').focus(); return null }
+  return {name,addr,city,notes,priority,dateISO}
+}
+function handleSubmit(){
+  const data=readForm(); if(!data) return
+  // Duplicate-name guard (skips the client being edited)
+  const dupes=findClientsByName(data.name, editingId)
+  if(dupes.length){
+    const lines=dupes.map(d=>'<b>'+C[d.id].n+'</b> — '+d.where.join('; ')).join('<br>')
+    const word=dupes.length>1?'clients':'a client'
+    openConfirm({
+      icon:'\u26a0\ufe0f',
+      title:'Duplicate name',
+      msg:'You already have '+word+' named "<b>'+data.name+'</b>":<br><br>'+lines+'<br><br>Add this as a separate client anyway?',
+      okLabel:'Add anyway',
+      onOk:()=>commitClient(data)
+    })
+    return
+  }
+  commitClient(data)
+}
+function commitClient(data){
+  const ck=cityKey(data.city)
+  if(editingId){
+    const c=C[editingId]; c.n=data.name; c.addr=data.addr; c.city=data.city; c.ck=ck; c.fb=FB_CK[ck]||45; c.notes=data.notes||null; c.priority=data.priority
+    if(data.dateISO){ c.crISO=data.dateISO; c.cr=isoToCr(data.dateISO) }
+    closeModal(); render(); toast(data.name+' updated')
+  } else {
+    const id=genId(data.name)
+    const crISO=data.dateISO||todayISO()
+    C[id]={n:data.name,city:data.city,ck:ck,addr:data.addr,cr:isoToCr(crISO),crISO:crISO,fb:FB_CK[ck]||45,flags:['NEW'],notes:data.notes||null,priority:data.priority,userAdded:true}
+    BACKLOG.push(id); S.backlog=BACKLOG
+    closeModal(); render(); toast(data.name+' added to backlog')
+  }
+}
+function togglePriority(id,e){ if(e) e.stopPropagation(); const c=C[id]; if(!c) return; c.priority=!c.priority; render(); toast(c.priority?c.n+' marked priority':c.n+' priority removed') }
+function delClient(id,e){
+  if(e) e.stopPropagation()
+  const c=C[id]
+  openConfirm({
+    icon:'\ud83d\uddd1', title:'Remove client?',
+    msg:'Remove <b>'+(c?c.n:id)+'</b> from the schedule? This removes them from all weeks and the backlog.',
+    okLabel:'Delete',
+    onOk:()=>{
+      Object.values(WEEKS).forEach(w=>{ DAY_KEYS.forEach(d=>{ w[d]=(w[d]||[]).filter(x=>x!==id) }) })
+      DAY_KEYS.forEach(d=>{ S[d]=(S[d]||[]).filter(x=>x!==id) })
+      const bi=BACKLOG.indexOf(id); if(bi>-1) BACKLOG.splice(bi,1)
+      delete C[id]                       // gone everywhere — won't resurface on any week
+      if(moveSel===id) cancelMove()
+      activateWeek(); render(); toast('Client removed')
+    }
+  })
+}
+
+// ── CUSTOM CONFIRM DIALOG ──
+let _confirmCb=null
+function openConfirm(opts){
+  _confirmCb=opts.onOk||null
+  document.getElementById('confirm-icon').textContent=opts.icon||'\u26a0\ufe0f'
+  document.getElementById('confirm-title').textContent=opts.title||'Are you sure?'
+  document.getElementById('confirm-msg').innerHTML=opts.msg||''
+  const ok=document.getElementById('confirm-ok')
+  ok.textContent=opts.okLabel||'Confirm'
+  ok.onclick=()=>{ const cb=_confirmCb; closeConfirm(); if(cb) cb() }
+  document.getElementById('confirm-overlay').classList.add('open')
+}
+function closeConfirm(){ document.getElementById('confirm-overlay').classList.remove('open'); _confirmCb=null }
+
+// ── EXPORT ──
+async function exportPNG(id,filename){
+  const el=document.getElementById(id); const btn=event.target; const orig=btn.textContent
+  btn.textContent='\u23f3...'; btn.disabled=true
+  try{ const c=await html2canvas(el,{backgroundColor:'#0f1117',scale:2,useCORS:true,logging:false,windowWidth:Math.max(el.scrollWidth+60,1200)}); const a=document.createElement('a'); a.download=filename; a.href=c.toDataURL('image/png'); a.click() }
+  catch(err){ alert('Export failed \u2014 try a screenshot.') }
+  btn.textContent=orig; btn.disabled=false
+}
+
+// ── TOAST ──
+let _tt; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),2600) }
+
+// ── DATA EXPORT / IMPORT (cross-device backup) ──
+const DATA_VERSION=1
+function exportData(){
+  saveState()  // flush current week into WEEKS first
+  const payload={
+    app:'site-visit-scheduler', version:DATA_VERSION, exportedAt:new Date().toISOString(),
+    clients:C, weeks:WEEKS, backlog:BACKLOG,
+    config:{weekStart:weekKey(weekStart),trafficOn,visibleDays}
+  }
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'})
+  const url=URL.createObjectURL(blob)
+  const stamp=new Date().toISOString().slice(0,10)
+  const a=document.createElement('a'); a.href=url; a.download='site-visits-backup-'+stamp+'.json'; a.click()
+  setTimeout(()=>URL.revokeObjectURL(url),1000)
+  toast('Backup downloaded')
+}
+
+function importDataFile(e){
+  const file=e.target.files&&e.target.files[0]
+  e.target.value=''  // reset so same file can be re-picked later
+  if(!file) return
+  const reader=new FileReader()
+  reader.onload=()=>{
+    let data
+    try{ data=JSON.parse(reader.result) }
+    catch(err){ alert('That file is not valid JSON. Make sure you picked a backup exported from this app.'); return }
+    if(!data||data.app!=='site-visit-scheduler'||!data.clients||!data.weeks){
+      alert('This does not look like a Site Visit Scheduler backup file.'); return
+    }
+    if(!confirm('Import this backup? It will REPLACE everything currently in this browser (clients, all weeks, backlog). Consider exporting your current data first if you want to keep it.')) return
+    try{
+      C=data.clients||{}
+      WEEKS={}; Object.keys(data.weeks||{}).forEach(k=>{ WEEKS[k]=normWeek(data.weeks[k]) })
+      BACKLOG=Array.isArray(data.backlog)?data.backlog.slice():[]
+      const cfg=data.config||{}
+      trafficOn=typeof cfg.trafficOn==='boolean'?cfg.trafficOn:true
+      visibleDays=(Array.isArray(cfg.visibleDays)&&cfg.visibleDays.length)?DAY_KEYS.filter(d=>cfg.visibleDays.includes(d)):DAY_KEYS.slice()
+      weekStart=snapToMonday(cfg.weekStart?parseKey(cfg.weekStart):parseKey(DEFAULT_WEEK_KEY))
+      cancelMove(); activateWeek(); validateState(true)
+      // reflect restored config in the UI
+      document.getElementById('traffic-state').textContent=trafficOn?'ON':'OFF'
+      document.getElementById('traffic-switch').classList.toggle('off',!trafficOn)
+      syncWeekPicker(); render()
+      const n=Object.keys(C).length, wk=Object.keys(WEEKS).length
+      toast('Imported '+n+' clients across '+wk+' week'+(wk!==1?'s':''))
+    }catch(err){ alert('Import failed while loading the data. The file may be corrupted.') }
+  }
+  reader.onerror=()=>alert('Could not read that file.')
+  reader.readAsText(file)
+}
+
+// ── KEYBOARD ──
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){
+  if(document.getElementById('confirm-overlay').classList.contains('open')) closeConfirm()
+  else if(document.getElementById('overlay').classList.contains('open')) closeModal()
+  else if(selectMode) exitSelectMode()
+  else if(moveSel) cancelMove()
+} })
+let _rsz; window.addEventListener('resize',()=>{ clearTimeout(_rsz); _rsz=setTimeout(capBacklog,150) })
+
+// ── INIT ──
+loadState()
+syncWeekPicker()
+document.getElementById('traffic-state').textContent=trafficOn?'ON':'OFF'
+document.getElementById('traffic-switch').classList.toggle('off',!trafficOn)
+render()
+</script>
+</body>
+</html>
