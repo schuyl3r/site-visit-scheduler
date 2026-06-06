@@ -463,37 +463,24 @@ const CF = {
 }
 
 // specific pair travel times (minutes, midday traffic)
-const TP = {
-  'thess:patty':22,'patty:thess':22,'thess:johnny':35,'johnny:thess':35,
-  'thess:dexter':28,'dexter:thess':28,'patty:johnny':30,'johnny:patty':30,
-  'patty:dexter':22,'dexter:patty':22,'johnny:dexter':30,'dexter:johnny':30,
-  'ailyn:jensen':25,'jensen:ailyn':25,'ailyn:kevin':28,'kevin:ailyn':28,
-  'ailyn:jinky':35,'jinky:ailyn':35,'jensen:kevin':15,'kevin:jensen':15,
-  'jensen:jinky':20,'jinky:jensen':20,'kevin:jinky':18,'jinky:kevin':18,
-  'jack:playdium':25,'playdium:jack':25,'jack:tyrone':30,'tyrone:jack':30,
-  'playdium:tyrone':18,'tyrone:playdium':18,'playdium:edmond':22,'edmond:playdium':22,
-  'tyrone:edmond':20,'edmond:tyrone':20,'edmond:engr':25,'engr:edmond':25,
-  'wilbert:edmond':50,'edmond:wilbert':50,'wilbert:engr':55,'engr:wilbert':55,
-  'jack:edmond':30,'edmond:jack':30,'wilbert:jack':40,'jack:wilbert':40,
-  'ailyn:playdium':30,'playdium:ailyn':30,'ailyn:tyrone':32,'tyrone:ailyn':32
-}
+const TP = {}
 
 // ── BASE CLIENTS ──
 const BASE_C = {
-  demo01:{n:'[Sample] Account 01',   city:'Pasig',        ck:'psg',addr:'Sample Street, Ortigas, Pasig',            cr:'Jun 2', fb:55,flags:[]},
-  demo02:{n:'[Sample] Account 02',   city:'Pasig',        ck:'psg',addr:'Placeholder Ave., Kapitolyo, Pasig',       cr:'Jun 3', fb:55,flags:[]},
-  demo03:{n:'[Sample] Account 03',   city:'Pateros',      ck:'pat',addr:'Demo Road, Pateros',                       cr:'Jun 4', fb:65,flags:[]},
-  demo04:{n:'[Sample] Account 04',   city:'San Juan',     ck:'sj', addr:'Placeholder St., San Juan City',           cr:'Jun 5', fb:50,flags:[]},
-  demo05:{n:'[Sample] Account 05',   city:'Quezon City',  ck:'qc', addr:'Demo Blvd., Libis, Quezon City',           cr:'Jun 5', fb:35,flags:['FIXED','AM ONLY'],fixedDay:'wed',priority:true},
-  demo06:{n:'[Sample] Account 06',   city:'Quezon City',  ck:'qc', addr:'Sample Drive, New Manila, Quezon City',    cr:'Jun 5', fb:30,flags:['NEW']},
-  demo07:{n:'[Sample] Account 07',   city:'Quezon City',  ck:'qc', addr:'Placeholder Road, Quezon City',            cr:'Jun 5', fb:25,flags:['NEW']},
-  demo08:{n:'[Sample] Account 08',   city:'Quezon City',  ck:'qc', addr:'Demo Ave., Timog, Quezon City',            cr:'Jun 6', fb:30,flags:[]},
-  demo09:{n:'[Sample] Account 09',   city:'Caloocan',     ck:'cal',addr:'Sample Blvd., Caloocan City',              cr:'Jun 7', fb:25,flags:['DEADLINE Jun15','ISOLATED'],deadline:'Mon Jun 15'},
-  demo10:{n:'[Sample] Account 10',   city:'Quezon City',  ck:'qc', addr:'Placeholder St., Tatalon, Quezon City',   cr:'Jun 8', fb:20,flags:[]},
-  demo11:{n:'[Sample] Account 11',   city:'Quezon City',  ck:'qc', addr:'Demo Street, Quezon City',                cr:'Jun 9', fb:22,flags:[]},
-  demo12:{n:'[Sample] Account 12',   city:'Quezon City',  ck:'qc', addr:'Sample Road, Sta. Mesa Heights, QC',      cr:'Jun 10',fb:30,flags:[]},
-  demo13:{n:'[Sample] Account 13',   city:'Taguig',       ck:'tag',addr:'Placeholder Drive, Taguig City',          cr:'Jun 11',fb:62,flags:[]},
-  demo14:{n:'[Sample] Account 14',   city:'Mandaluyong',  ck:'mnd',addr:'Demo Ave., Mandaluyong City',             cr:'Jun 12',fb:48,flags:[]}
+  demo01:{n:'Johnny Appleseed',   city:'Pasig',        ck:'psg',addr:'Sample Street, Ortigas, Pasig',            cr:'Jun 2', fb:55,flags:[]},
+  demo02:{n:'Clara Fontaine',   city:'Pasig',        ck:'psg',addr:'Placeholder Ave., Kapitolyo, Pasig',       cr:'Jun 3', fb:55,flags:[]},
+  demo03:{n:'Marco Delgado',   city:'Pateros',      ck:'pat',addr:'Demo Road, Pateros',                       cr:'Jun 4', fb:65,flags:[]},
+  demo04:{n:'Priya Venugopal',   city:'San Juan',     ck:'sj', addr:'Placeholder St., San Juan City',           cr:'Jun 5', fb:50,flags:[]},
+  demo05:{n:'Beatrice Nakamura',   city:'Quezon City',  ck:'qc', addr:'Demo Blvd., Libis, Quezon City',           cr:'Jun 5', fb:35,flags:['FIXED','AM ONLY'],fixedDay:'wed',priority:true},
+  demo06:{n:'Rafael Okonkwo',   city:'Quezon City',  ck:'qc', addr:'Sample Drive, New Manila, Quezon City',    cr:'Jun 5', fb:30,flags:['NEW']},
+  demo07:{n:'Ingrid Vasquez',   city:'Quezon City',  ck:'qc', addr:'Placeholder Road, Quezon City',            cr:'Jun 5', fb:25,flags:['NEW']},
+  demo08:{n:'Leo Tambayan',   city:'Quezon City',  ck:'qc', addr:'Demo Ave., Timog, Quezon City',            cr:'Jun 6', fb:30,flags:[]},
+  demo09:{n:'Stella Marchetti',   city:'Caloocan',     ck:'cal',addr:'Sample Blvd., Caloocan City',              cr:'Jun 7', fb:25,flags:['DEADLINE Jun15','ISOLATED'],deadline:'Mon Jun 15'},
+  demo10:{n:'Gus Fairweather',   city:'Quezon City',  ck:'qc', addr:'Placeholder St., Tatalon, Quezon City',   cr:'Jun 8', fb:20,flags:[]},
+  demo11:{n:'Nadia Breckenridge',   city:'Quezon City',  ck:'qc', addr:'Demo Street, Quezon City',                cr:'Jun 9', fb:22,flags:[]},
+  demo12:{n:'Felix Drummond',   city:'Quezon City',  ck:'qc', addr:'Sample Road, Sta. Mesa Heights, QC',      cr:'Jun 10',fb:30,flags:[]},
+  demo13:{n:'Yuki Harrington',   city:'Taguig',       ck:'tag',addr:'Placeholder Drive, Taguig City',          cr:'Jun 11',fb:62,flags:[]},
+  demo14:{n:'Oscar Wentworth',   city:'Mandaluyong',  ck:'mnd',addr:'Demo Ave., Mandaluyong City',             cr:'Jun 12',fb:48,flags:[]}
 }
 
 // ── DAYS (Mon–Sun). Coding plates fixed per weekday; Mon & weekends free ──
