@@ -48,9 +48,3 @@ python3 -m http.server 8000
 - Vanilla JavaScript — no framework, no bundler, no dependencies to install.
 - One runtime dependency loaded from a CDN: [html2canvas](https://html2canvas.hertzfeld.com/) for PNG export.
 - Responsive layout: side-by-side day columns on desktop, a single stacked column on mobile.
-
-## Deploying to GitHub Pages
-
-1. Create a public repository and add `index.html` (and this `README.md`) to it.
-2. In the repository's **Settings → Pages**, set the source to **Deploy from a branch**, branch **main**, folder **/ (root)**, and save.
-3. After a minute or two, the site is live at `https://<your-username>.github.io/<repo-name>/`.
