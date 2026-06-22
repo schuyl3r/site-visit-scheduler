@@ -4,7 +4,7 @@ An interactive weekly planner for scheduling field visits across Metro Manila an
 
 Built as a single self-contained HTML file with no build step, no framework, and no backend. All data lives in the browser.
 
-**Live demo:** `https://schuyl3r.github.io/site-visit-scheduler/`
+**Live demo:** [https://schuyl3r.github.io/site-visit-scheduler/](https://schuyl3r.github.io/site-visit-scheduler/)
 
 > Built with [Claude](https://claude.ai) as an exercise in turning a recurring manual workflow (previously tracked in a notes app and a table) into a purpose-built tool.
 
