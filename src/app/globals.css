@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Typography */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Color tokens */
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+}
+
+:root {
+  /* Neutral scale — structure, text, borders. Dark by design: this is a
+     data-dense planning board, not a marketing surface. */
+  --background: #0f1117;
+  --surface: #181c27;
+  --surface-2: #1e2333;
+  --foreground: #e8eaf2;
+  --muted: #9aa2c3;
+  --subtle: #6b7394;
+  --border: #2a2f42;
+
+  /* Single restrained accent, reused everywhere incl. priority/select cues */
+  --accent: #7c3aed;
+  --accent-foreground: #ffffff;
+
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Board columns get an explicit inline grid-template-columns (dynamic count,
+   with a 220px min before scrolling); this is the one place mobile needs to
+   win over an inline style, hence !important here instead of a Tailwind class. */
+@media (max-width: 640px) {
+  .board-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
