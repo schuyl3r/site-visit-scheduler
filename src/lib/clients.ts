@@ -18,6 +18,21 @@ export function getCardsForDay(week: Week | undefined, day: Day): VisitCard[] {
   return week.visitCards.filter((vc) => vc.day === day).sort((a, b) => a.order - b.order);
 }
 
+/**
+ * Strips VisitCards referencing a clientId that doesn't exist in `clients`.
+ * Mirrors the legacy app's load-time validation — guards against corrupted or
+ * hand-edited imports leaving dangling cards that inflate a day's stop count
+ * without ever rendering.
+ */
+export function sanitizeWeeks(clients: Record<string, Client>, weeks: Record<string, Week>): Record<string, Week> {
+  return Object.fromEntries(
+    Object.entries(weeks).map(([id, week]) => [
+      id,
+      { ...week, visitCards: week.visitCards.filter((vc) => vc.clientId in clients) },
+    ]),
+  );
+}
+
 /** Human-readable list of where a client is currently scheduled, e.g. "Tuesday, Jun 3", or "Backlog". */
 export function describeClientPlacements(weeks: Record<string, Week>, clientId: string): string[] {
   const spots = findCardsForClient(weeks, clientId).map((vc) => {

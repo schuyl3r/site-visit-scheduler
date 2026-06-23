@@ -45,8 +45,20 @@ export function downloadJSON(payload: unknown, filename: string): void {
 
 export class InvalidBackupError extends Error {}
 
+/**
+ * Shape of a parsed backup file. `config` is intentionally optional/partial here
+ * (unlike ExportPayload, which is what *we* always produce on export) since an
+ * imported file could be hand-edited, truncated, or from an older/future version.
+ */
+export interface ImportPayload {
+  app: string;
+  clients: Record<string, Client>;
+  weeks: Record<string, Week>;
+  config?: Partial<ExportPayload["config"]>;
+}
+
 /** Parses + shape-checks a backup file's contents. Throws InvalidBackupError if malformed. */
-export function parseImportPayload(raw: string): ExportPayload {
+export function parseImportPayload(raw: string): ImportPayload {
   let data: unknown;
   try {
     data = JSON.parse(raw);
@@ -62,5 +74,5 @@ export function parseImportPayload(raw: string): ExportPayload {
   ) {
     throw new InvalidBackupError("This does not look like a Site Visit Scheduler backup file.");
   }
-  return data as ExportPayload;
+  return data as ImportPayload;
 }

@@ -33,6 +33,12 @@ export function Backlog() {
   const stripRef = useRef<HTMLDivElement | null>(null);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
 
+  // Cheap fingerprint of whatever can change a card's rendered height, so the
+  // measurement effect below also reruns on a content edit, not just a count change.
+  const contentSignature = backlogIds
+    .map((id) => `${id}:${clients[id]?.notes.length ?? 0}:${clients[id]?.address.length ?? 0}:${clients[id]?.name.length ?? 0}`)
+    .join("|");
+
   // Cap the backlog to ~4 rows tall, then scroll — measures actual rendered
   // card heights so it adapts to content and the current column count.
   useEffect(() => {
@@ -59,7 +65,7 @@ export function Backlog() {
       clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
     };
-  }, [backlogIds.length]);
+  }, [contentSignature]);
 
   function requestDelete(clientId: string, name: string) {
     openConfirmDialog({

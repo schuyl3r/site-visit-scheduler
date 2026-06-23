@@ -16,8 +16,8 @@ import { DEFAULT_VISIT_DURATION, clampDuration } from "@/lib/timing";
 import { DAY_META, codingOverrideKey, isCodingFree } from "@/lib/coding";
 import { dayFromDate, formatShortDate, formatWeekLabel, snapToMonday, todayISO, weekKey } from "@/lib/week";
 import { generateClientId, generateVisitCardId } from "@/lib/id";
-import { describeClientPlacements, getCardsForDay } from "@/lib/clients";
-import { ExportPayload } from "@/lib/exportImport";
+import { findDuplicateClients, getCardsForDay, sanitizeWeeks } from "@/lib/clients";
+import { ImportPayload } from "@/lib/exportImport";
 import { createInitialState } from "./seedData";
 
 interface ToastState {
@@ -73,7 +73,7 @@ interface SchedulerActions {
   bulkDeleteSelected: () => void;
 
   // export / import
-  importSnapshot: (payload: ExportPayload) => void;
+  importSnapshot: (payload: ImportPayload) => void;
 
   // toast
   showToast: (message: string) => void;
@@ -98,6 +98,19 @@ function nextToast(message: string): ToastState {
 /** Re-keys a day's cards 0..n-1 by current order, e.g. after a card leaves. */
 function renumber(cards: VisitCard[]): VisitCard[] {
   return cards.map((vc, i) => ({ ...vc, order: i }));
+}
+
+/** Removes cards for `clientIds` from `visitCards`, renumbering any day(s) they vacated. */
+function removeCardsAndRenumberSource(visitCards: VisitCard[], clientIds: string[]): VisitCard[] {
+  const removedIds = new Set(clientIds);
+  const affectedDays = new Set(visitCards.filter((vc) => removedIds.has(vc.clientId)).map((vc) => vc.day));
+  const remaining = visitCards.filter((vc) => !removedIds.has(vc.clientId));
+  if (!affectedDays.size) return remaining;
+  const untouched = remaining.filter((vc) => !affectedDays.has(vc.day));
+  const renumbered = [...affectedDays].flatMap((day) =>
+    renumber(remaining.filter((vc) => vc.day === day).sort((a, b) => a.order - b.order)),
+  );
+  return [...untouched, ...renumbered];
 }
 
 export const useSchedulerStore = create<SchedulerStore>()(
@@ -158,11 +171,7 @@ export const useSchedulerStore = create<SchedulerStore>()(
 
       checkDuplicates: (name, exceptId) => {
         const state = get();
-        const norm = name.trim().toLowerCase();
-        if (!norm) return [];
-        return Object.values(state.clients)
-          .filter((c) => c.id !== exceptId && c.name.trim().toLowerCase() === norm)
-          .map((c) => ({ id: c.id, name: c.name, where: describeClientPlacements(state.weeks, c.id) }));
+        return findDuplicateClients(state.clients, state.weeks, name, exceptId);
       },
 
       commitClient: (input, editingClientId) => {
@@ -207,7 +216,13 @@ export const useSchedulerStore = create<SchedulerStore>()(
             };
           }
 
-          // Remove any existing placement everywhere — a client has at most one VisitCard.
+          // A client has at most one VisitCard — carry its duration forward (if any)
+          // before removing it, so re-scheduling doesn't silently reset a customized
+          // visit length back to the default.
+          const priorDuration = Object.values(state.weeks)
+            .flatMap((week) => week.visitCards)
+            .find((vc) => vc.clientId === clientId)?.duration;
+
           let weeks = Object.fromEntries(
             Object.entries(state.weeks).map(([id, week]) => [
               id,
@@ -233,7 +248,7 @@ export const useSchedulerStore = create<SchedulerStore>()(
                     weekId: placedWeekId,
                     day: placedDay,
                     order: dayCount,
-                    duration: DEFAULT_VISIT_DURATION,
+                    duration: priorDuration ?? DEFAULT_VISIT_DURATION,
                   },
                 ],
               },
@@ -297,24 +312,24 @@ export const useSchedulerStore = create<SchedulerStore>()(
           const existing = week.visitCards.find((vc) => vc.clientId === clientId);
           const duration = existing?.duration ?? DEFAULT_VISIT_DURATION;
 
-          const withoutMoved = week.visitCards.filter((vc) => vc.clientId !== clientId);
+          // `targetIndex` is the drop target's index in the pre-drag list (it still
+          // includes the dragged card). When reordering within the same day and the
+          // card moves forward, removing it first shifts everything after it back by
+          // one, so the captured index overshoots by one unless corrected here.
+          const adjustedTargetIndex =
+            existing && existing.day === targetDay && targetIndex > existing.order ? targetIndex - 1 : targetIndex;
+
+          const withoutMoved = removeCardsAndRenumberSource(week.visitCards, [clientId]);
 
           const targetDayCards = withoutMoved.filter((vc) => vc.day === targetDay).sort((a, b) => a.order - b.order);
-          const insertIndex = Math.max(0, Math.min(targetIndex, targetDayCards.length));
+          const insertIndex = Math.max(0, Math.min(adjustedTargetIndex, targetDayCards.length));
           const movedCard: VisitCard = existing
             ? { ...existing, day: targetDay, weekId, order: 0 }
             : { id: generateVisitCardId(), clientId, weekId, day: targetDay, order: 0, duration };
           targetDayCards.splice(insertIndex, 0, movedCard);
           const renumberedTarget = renumber(targetDayCards);
 
-          let otherCards = withoutMoved.filter((vc) => vc.day !== targetDay);
-          if (existing && existing.day !== targetDay) {
-            const sourceDayCards = renumber(
-              otherCards.filter((vc) => vc.day === existing.day).sort((a, b) => a.order - b.order),
-            );
-            const rest = otherCards.filter((vc) => vc.day !== existing.day);
-            otherCards = [...rest, ...sourceDayCards];
-          }
+          const otherCards = withoutMoved.filter((vc) => vc.day !== targetDay);
 
           return { weeks: { ...state.weeks, [weekId]: { ...week, visitCards: [...otherCards, ...renumberedTarget] } } };
         }),
@@ -324,14 +339,9 @@ export const useSchedulerStore = create<SchedulerStore>()(
           const weekId = state.currentWeekId;
           const week = state.weeks[weekId];
           if (!week) return {};
-          const existing = week.visitCards.find((vc) => vc.clientId === clientId);
-          if (!existing) return {};
-          const remaining = week.visitCards.filter((vc) => vc.clientId !== clientId);
-          const sourceDayCards = renumber(
-            remaining.filter((vc) => vc.day === existing.day).sort((a, b) => a.order - b.order),
-          );
-          const rest = remaining.filter((vc) => vc.day !== existing.day);
-          return { weeks: { ...state.weeks, [weekId]: { ...week, visitCards: [...rest, ...sourceDayCards] } } };
+          if (!week.visitCards.some((vc) => vc.clientId === clientId)) return {};
+          const visitCards = removeCardsAndRenumberSource(week.visitCards, [clientId]);
+          return { weeks: { ...state.weeks, [weekId]: { ...week, visitCards } } };
         }),
 
       setCardDuration: (cardId, minutes) =>
@@ -385,11 +395,12 @@ export const useSchedulerStore = create<SchedulerStore>()(
           if (!ids.length) return { toast: nextToast("Nothing selected") };
           const weekId = state.currentWeekId;
           const week = state.weeks[weekId] ?? { id: weekId, label: formatWeekLabel(weekId), visitCards: [] };
-          const remaining = week.visitCards.filter((vc) => !ids.includes(vc.clientId));
+          const priorById = new Map(week.visitCards.map((vc) => [vc.clientId, vc]));
+          const remaining = removeCardsAndRenumberSource(week.visitCards, ids);
           const existingDayCards = remaining.filter((vc) => vc.day === day).sort((a, b) => a.order - b.order);
           const otherCards = remaining.filter((vc) => vc.day !== day);
           const moved = ids.map((clientId, i) => {
-            const prior = week.visitCards.find((vc) => vc.clientId === clientId);
+            const prior = priorById.get(clientId);
             return {
               id: prior?.id ?? generateVisitCardId(),
               clientId,
@@ -414,7 +425,7 @@ export const useSchedulerStore = create<SchedulerStore>()(
           const weekId = state.currentWeekId;
           const week = state.weeks[weekId];
           const weeks = week
-            ? { ...state.weeks, [weekId]: { ...week, visitCards: week.visitCards.filter((vc) => !ids.includes(vc.clientId)) } }
+            ? { ...state.weeks, [weekId]: { ...week, visitCards: removeCardsAndRenumberSource(week.visitCards, ids) } }
             : state.weeks;
           return {
             weeks,
@@ -446,21 +457,38 @@ export const useSchedulerStore = create<SchedulerStore>()(
         }),
 
       importSnapshot: (payload) =>
-        set(() => ({
-          clients: payload.clients,
-          weeks: payload.weeks,
-          currentWeekId: payload.config.currentWeekId,
-          trafficMode: payload.config.trafficMode,
-          selectedDayFilters: payload.config.selectedDayFilters,
-          codingOverrides: payload.config.codingOverrides,
-          selectMode: false,
-          selectedClientIds: new Set<string>(),
-          confirmDialog: null,
-          clientForm: null,
-          toast: nextToast(
-            `Imported ${Object.keys(payload.clients).length} clients across ${Object.keys(payload.weeks).length} week${Object.keys(payload.weeks).length !== 1 ? "s" : ""}`,
-          ),
-        })),
+        set((state) => {
+          // `config` (and each of its fields) may be missing or malformed — the
+          // file could be hand-edited, truncated, or from an older/future version.
+          // Fall back to current settings rather than crashing on any gap.
+          const config = payload.config ?? {};
+          const weeks = sanitizeWeeks(payload.clients, payload.weeks);
+          const importedWeekIds = Object.keys(weeks);
+          const selectedDayFilters =
+            Array.isArray(config.selectedDayFilters) && config.selectedDayFilters.length
+              ? DAY_ORDER.filter((d) => config.selectedDayFilters!.includes(d))
+              : state.selectedDayFilters;
+
+          return {
+            clients: payload.clients,
+            weeks,
+            currentWeekId:
+              typeof config.currentWeekId === "string" ? config.currentWeekId : importedWeekIds[0] ?? state.currentWeekId,
+            trafficMode: typeof config.trafficMode === "boolean" ? config.trafficMode : state.trafficMode,
+            selectedDayFilters,
+            codingOverrides:
+              config.codingOverrides && typeof config.codingOverrides === "object"
+                ? config.codingOverrides
+                : state.codingOverrides,
+            selectMode: false,
+            selectedClientIds: new Set<string>(),
+            confirmDialog: null,
+            clientForm: null,
+            toast: nextToast(
+              `Imported ${Object.keys(payload.clients).length} clients across ${importedWeekIds.length} week${importedWeekIds.length !== 1 ? "s" : ""}`,
+            ),
+          };
+        }),
 
       showToast: (message) => set({ toast: nextToast(message) }),
       clearToast: () => set({ toast: null }),

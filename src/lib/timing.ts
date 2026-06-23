@@ -14,10 +14,11 @@ export function clampDuration(minutes: number): number {
   return Math.min(VISIT_DURATION_MAX, Math.max(VISIT_DURATION_MIN, Math.round(minutes)));
 }
 
-/** Minutes-since-midnight -> "10:01 AM". */
+/** Minutes-since-midnight -> "10:01 AM". Wraps past 24h since stop count has no hard cap. */
 export function formatClock(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  const h = Math.floor(normalized / 60);
+  const m = normalized % 60;
   const period = h < 12 ? "AM" : "PM";
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;

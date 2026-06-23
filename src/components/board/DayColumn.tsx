@@ -6,31 +6,11 @@ import { Home } from "lucide-react";
 import { useSchedulerStore } from "@/store/useSchedulerStore";
 import { Day } from "@/types";
 import { getCardsForDay } from "@/lib/clients";
-import { getCodingInfo } from "@/lib/coding";
+import { DAY_META, getCodingInfo } from "@/lib/coding";
 import { calcDayTimeline, formatClock, MAX_STOPS_PER_DAY, routeSummary, SlotLoadLevel, visitLoadLevel } from "@/lib/timing";
 import { dayDateInWeek, formatShortDate } from "@/lib/week";
 import { containerDroppableId } from "./BoardDndProvider";
 import { SortableVisitCard } from "./SortableVisitCard";
-
-const DAY_COLORS: Record<Day, string> = {
-  mon: "#94a3b8",
-  tue: "#60a5fa",
-  wed: "#c084fc",
-  thu: "#f97316",
-  fri: "#4ade80",
-  sat: "#fbbf24",
-  sun: "#f472b6",
-};
-
-const DAY_NAMES: Record<Day, string> = {
-  mon: "Monday",
-  tue: "Tuesday",
-  wed: "Wednesday",
-  thu: "Thursday",
-  fri: "Friday",
-  sat: "Saturday",
-  sun: "Sunday",
-};
 
 const LOAD_BADGE_CLASSES: Record<SlotLoadLevel, string> = {
   none: "bg-surface-2 border-border text-muted",
@@ -83,13 +63,13 @@ export function DayColumn({ day }: DayColumnProps) {
   return (
     <div
       className={`rounded-lg border bg-surface overflow-hidden min-w-0 transition-colors ${isOver ? "border-accent/70 bg-[#100f1e]" : "border-border"}`}
-      style={{ borderTop: `3px solid ${DAY_COLORS[day]}` }}
+      style={{ borderTop: `3px solid ${DAY_META[day].color}` }}
     >
       <div className="p-3 border-b border-border">
         <div className="flex justify-between items-start gap-1.5 mb-1">
           <div>
-            <div className="text-sm font-bold" style={{ color: DAY_COLORS[day] }}>
-              {DAY_NAMES[day]}
+            <div className="text-sm font-bold" style={{ color: DAY_META[day].color }}>
+              {DAY_META[day].name}
             </div>
             <div className="text-[10px] text-muted font-mono mt-0.5">{dateLabel}</div>
             <div className={`text-[9.5px] font-mono mt-1 flex items-center gap-1.5 ${coding.isFree ? "text-ok" : "text-warn"}`}>
