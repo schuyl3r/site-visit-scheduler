@@ -2,6 +2,8 @@
 
 An interactive weekly planner for scheduling field visits across Metro Manila and nearby provinces, built to handle the real constraints of getting around the city — traffic, vehicle coding (number-coding scheme), and clustering stops by location to minimise travel time.
 
+Explore it at [https://site-visit-scheduler.vercel.app/](https://site-visit-scheduler.vercel.app/)
+
 Built with Next.js, React, TypeScript, and Tailwind CSS. No backend — all data lives in the browser via `localStorage`.
 
 > Built with [Claude](https://claude.ai) as an exercise in turning a recurring manual workflow (previously tracked in a notes app and a table) into a purpose-built tool.
